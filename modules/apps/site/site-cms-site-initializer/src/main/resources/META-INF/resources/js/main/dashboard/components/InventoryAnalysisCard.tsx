@@ -5,9 +5,11 @@
 
 import {Body, Cell, Head, Row, Table, Text} from '@clayui/core';
 import {ClayPaginationBarWithBasicItems} from '@clayui/pagination-bar';
-import React, {useContext, useEffect, useState} from 'react';
+import React, {useCallback, useContext, useEffect, useState} from 'react';
 
+import ApiHelper from '../../../services/ApiHelper';
 import {ViewDashboardContext} from '../ViewDashboardContext';
+import {buildQueryString} from '../utils/buildQueryString';
 import {AllCategoriesDropdown} from './AllCategoriesDropdown';
 import {AllStructureTypesDropdown} from './AllStructureTypesDropdown';
 import {AllTagsDropdown} from './AllTagsDropdown';
@@ -45,12 +47,12 @@ const VolumeChart = ({
 };
 
 type Data = {
-	assets: {count: number; title: string}[];
+	inventoryAnalysisItems: {count: number; title: string}[];
 	totalCount: number;
 };
 
 const mockData: Data = {
-	assets: [
+	inventoryAnalysisItems: [
 		{
 			count: 999999,
 			title: 'title 1',
@@ -72,7 +74,7 @@ const mockData: Data = {
 };
 
 const mapData = (data: Data) => {
-	return data.assets.map(({count, title}) => {
+	return data.inventoryAnalysisItems.map(({count, title}) => {
 		const percentage = (count / data.totalCount) * 100;
 
 		return {
@@ -109,6 +111,10 @@ export const initialVocabulary = {
 };
 
 export function InventoryAnalysisCard() {
+	const {
+		filters: {language, space},
+	} = useContext(ViewDashboardContext);
+
 	const [delta, setDelta] = useState(4);
 
 	const [category, setCategory] = useState<Item>(initialCategory);
@@ -116,17 +122,45 @@ export function InventoryAnalysisCard() {
 	const [structureType, setStructureType] =
 		useState<Item>(initialStructureType);
 
-	// TODO LPD-50207
-
-	const [_structureTypeData, setStructureTypeData] =
+	const [structureTypeData, setStructureTypeData] =
 		useState<IStructureProps>();
+
+	const [tableData, setTableData] = useState(mapData(mockData));
 
 	const [tag, setTag] = useState<Item>(initialTag);
 	const [vocabulary, setVocabulary] = useState<Item>(initialVocabulary);
 
-	const {
-		filters: {space},
-	} = useContext(ViewDashboardContext);
+	const fetchStructureData = useCallback(async () => {
+		const params = {
+			categoryId: category?.value,
+			groupBy: structureType?.value,
+			language: language?.value,
+			rangeKey: '0',
+			space: space?.value,
+			structureId: structure?.value,
+			vocabularyId: vocabulary?.value,
+		};
+
+		const filteredParams = Object.fromEntries(
+			Object.entries(params).filter(
+				([, value]) =>
+					value !== null && value !== undefined && value !== ''
+			)
+		);
+		const queryParams = buildQueryString(filteredParams);
+
+		const endpoint = `/o/analytics-cms-rest/v1.0/inventory-analysis${queryParams}`;
+
+		const {data, error} = await ApiHelper.get<IStructureProps>(endpoint);
+
+		if (data) {
+			setStructureTypeData({...data});
+		}
+
+		if (error) {
+			console.error(error);
+		}
+	}, [language, structureType, structure, vocabulary, category, space]);
 
 	useEffect(() => {
 		setCategory(initialCategory);
@@ -134,6 +168,26 @@ export function InventoryAnalysisCard() {
 		setTag(initialTag);
 		setVocabulary(initialVocabulary);
 	}, [space?.value]);
+
+	useEffect(() => {
+		if (structureTypeData) {
+			const updatedData = mapData(structureTypeData);
+			setTableData(updatedData);
+		}
+	}, [structureTypeData]);
+
+	useEffect(() => {
+		fetchStructureData();
+	}, [
+		category,
+		fetchStructureData,
+		language,
+		space,
+		structure,
+		structureType,
+		tag,
+		vocabulary,
+	]);
 
 	const deltas = [
 		{
@@ -233,12 +287,13 @@ export function InventoryAnalysisCard() {
 						)}
 					</Head>
 
-					<Body defaultItems={mapData(mockData)}>
+					<Body items={tableData}>
 						{(row) => (
 							<Row>
 								<Cell width="10%">
 									<Text size={3} weight="semi-bold">
-										{row['title']}
+										{row['title'] ||
+											`No ${structureType.label}`}
 									</Text>
 								</Cell>
 
@@ -262,7 +317,7 @@ export function InventoryAnalysisCard() {
 					ellipsisBuffer={3}
 					ellipsisProps={{'aria-label': 'More', 'title': 'More'}}
 					onDeltaChange={setDelta}
-					totalItems={21}
+					totalItems={tableData.length ? tableData.length : 0}
 				/>
 			</BaseCard>
 		</div>
