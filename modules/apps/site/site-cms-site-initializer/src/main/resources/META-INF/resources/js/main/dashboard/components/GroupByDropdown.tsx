@@ -13,9 +13,7 @@ export interface IStructureProps {
 	totalCount: number;
 }
 
-interface IGroupByDropdown extends IAllFiltersDropdown {
-	setStructureTypeData: (value: IStructureProps) => void;
-}
+interface IGroupByDropdown extends IAllFiltersDropdown {}
 
 const defaultStructureTypes: Item[] = [
 	{
