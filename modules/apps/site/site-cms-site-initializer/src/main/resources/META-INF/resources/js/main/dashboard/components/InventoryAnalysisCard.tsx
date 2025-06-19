@@ -51,29 +51,13 @@ type Data = {
 	totalCount: number;
 };
 
-const mockData: Data = {
-	inventoryAnalysisItems: [
-		{
-			count: 999999,
-			title: 'title 1',
-		},
-		{
-			count: 999999,
-			title: 'title 2',
-		},
-		{
-			count: 999999,
-			title: 'title 3',
-		},
-		{
-			count: 999999,
-			title: 'title 4',
-		},
-	],
-	totalCount: 1000,
+type TableData = {
+	percentage: number;
+	title: string;
+	volume: JSX.Element;
 };
 
-const mapData = (data: Data) => {
+const mapData = (data: Data): TableData[] => {
 	return data.inventoryAnalysisItems.map(({count, title}) => {
 		const percentage = (count / data.totalCount) * 100;
 
@@ -121,13 +105,10 @@ export function InventoryAnalysisCard() {
 	const [structure, setStructure] = useState<Item>(initialStructure);
 	const [structureType, setStructureType] =
 		useState<Item>(initialStructureType);
-
 	const [structureTypeData, setStructureTypeData] =
 		useState<IStructureProps>();
-
-	const [tableData, setTableData] = useState(mapData(mockData));
-
 	const [tag, setTag] = useState<Item>(initialTag);
+	const [tableData, setTableData] = useState<TableData[]>();
 	const [vocabulary, setVocabulary] = useState<Item>(initialVocabulary);
 
 	const fetchStructureData = useCallback(async () => {
@@ -147,6 +128,7 @@ export function InventoryAnalysisCard() {
 					value !== null && value !== undefined && value !== ''
 			)
 		);
+
 		const queryParams = buildQueryString(filteredParams);
 
 		const endpoint = `/o/analytics-cms-rest/v1.0/inventory-analysis${queryParams}`;
@@ -317,7 +299,7 @@ export function InventoryAnalysisCard() {
 					ellipsisBuffer={3}
 					ellipsisProps={{'aria-label': 'More', 'title': 'More'}}
 					onDeltaChange={setDelta}
-					totalItems={tableData.length ? tableData.length : 0}
+					totalItems={tableData?.length || 0}
 				/>
 			</BaseCard>
 		</div>
