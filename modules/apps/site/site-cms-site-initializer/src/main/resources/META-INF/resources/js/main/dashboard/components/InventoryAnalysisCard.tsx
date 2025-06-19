@@ -5,7 +5,13 @@
 
 import {Body, Cell, Head, Row, Table, Text} from '@clayui/core';
 import {ClayPaginationBarWithBasicItems} from '@clayui/pagination-bar';
-import React, {useCallback, useContext, useEffect, useState} from 'react';
+import React, {
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useState,
+} from 'react';
 
 import ApiHelper from '../../../services/ApiHelper';
 import {ViewDashboardContext} from '../ViewDashboardContext';
@@ -105,14 +111,14 @@ export function InventoryAnalysisCard() {
 	const [structure, setStructure] = useState<Item>(initialStructure);
 	const [structureType, setStructureType] =
 		useState<Item>(initialStructureType);
-	const [structureTypeData, setStructureTypeData] =
+	const [inventoryAnalysisData, setInventoryAnalysisData] =
 		useState<IStructureProps>();
 	const [tag, setTag] = useState<Item>(initialTag);
 	const [tableData, setTableData] = useState<TableData[]>();
 	const [vocabulary, setVocabulary] = useState<Item>(initialVocabulary);
 
-	const fetchStructureData = useCallback(async () => {
-		const params = {
+	const params = useMemo(
+		() => ({
 			categoryId: category?.value,
 			groupBy: structureType?.value,
 			language: language?.value,
@@ -120,29 +126,28 @@ export function InventoryAnalysisCard() {
 			space: space?.value,
 			structureId: structure?.value,
 			vocabularyId: vocabulary?.value,
-		};
+		}),
+		[category, structureType, language, space, structure, vocabulary]
+	);
 
+	const fetchStructureData = useCallback(async () => {
 		const filteredParams = Object.fromEntries(
 			Object.entries(params).filter(
-				([, value]) =>
-					value !== null && value !== undefined && value !== ''
+				([, value]) => value !== null && value !== ''
 			)
 		);
-
 		const queryParams = buildQueryString(filteredParams);
-
 		const endpoint = `/o/analytics-cms-rest/v1.0/inventory-analysis${queryParams}`;
 
 		const {data, error} = await ApiHelper.get<IStructureProps>(endpoint);
 
 		if (data) {
-			setStructureTypeData({...data});
+			setInventoryAnalysisData({...data});
 		}
-
 		if (error) {
 			console.error(error);
 		}
-	}, [language, structureType, structure, vocabulary, category, space]);
+	}, [params]);
 
 	useEffect(() => {
 		setCategory(initialCategory);
@@ -152,24 +157,15 @@ export function InventoryAnalysisCard() {
 	}, [space?.value]);
 
 	useEffect(() => {
-		if (structureTypeData) {
-			const updatedData = mapData(structureTypeData);
+		if (inventoryAnalysisData) {
+			const updatedData = mapData(inventoryAnalysisData);
 			setTableData(updatedData);
 		}
-	}, [structureTypeData]);
+	}, [inventoryAnalysisData]);
 
 	useEffect(() => {
 		fetchStructureData();
-	}, [
-		category,
-		fetchStructureData,
-		language,
-		space,
-		structure,
-		structureType,
-		tag,
-		vocabulary,
-	]);
+	}, [fetchStructureData]);
 
 	const deltas = [
 		{
@@ -206,7 +202,6 @@ export function InventoryAnalysisCard() {
 					<GroupByDropdown
 						item={structureType}
 						onSelectItem={setStructureType}
-						setStructureTypeData={setStructureTypeData}
 					/>
 
 					<span className="ml-3 mr-2">
