@@ -29,6 +29,17 @@ export interface IAllFiltersDropdown extends React.HTMLAttributes<HTMLElement> {
 	onSelectItem: (item: Item) => void;
 }
 
+type Data = {
+	inventoryAnalysisItems: {count: number; title: string}[];
+	totalCount: number;
+};
+
+type TableData = {
+	percentage: number;
+	title: string;
+	volume: JSX.Element;
+};
+
 const VolumeChart = ({
 	percentage,
 	volume,
@@ -50,17 +61,6 @@ const VolumeChart = ({
 			</div>
 		</div>
 	);
-};
-
-type Data = {
-	inventoryAnalysisItems: {count: number; title: string}[];
-	totalCount: number;
-};
-
-type TableData = {
-	percentage: number;
-	title: string;
-	volume: JSX.Element;
 };
 
 const mapData = (data: Data): TableData[] => {
@@ -114,7 +114,6 @@ export function InventoryAnalysisCard() {
 	const [inventoryAnalysisData, setInventoryAnalysisData] =
 		useState<IStructureProps>();
 	const [tag, setTag] = useState<Item>(initialTag);
-	const [tableData, setTableData] = useState<TableData[]>();
 	const [vocabulary, setVocabulary] = useState<Item>(initialVocabulary);
 
 	const params = useMemo(
@@ -129,6 +128,10 @@ export function InventoryAnalysisCard() {
 		}),
 		[category, structureType, language, space, structure, vocabulary]
 	);
+
+	const tableData = useMemo(() => {
+		return inventoryAnalysisData ? mapData(inventoryAnalysisData) : [];
+	}, [inventoryAnalysisData]);
 
 	const fetchStructureData = useCallback(async () => {
 		const filteredParams = Object.fromEntries(
@@ -155,13 +158,6 @@ export function InventoryAnalysisCard() {
 		setTag(initialTag);
 		setVocabulary(initialVocabulary);
 	}, [space?.value]);
-
-	useEffect(() => {
-		if (inventoryAnalysisData) {
-			const updatedData = mapData(inventoryAnalysisData);
-			setTableData(updatedData);
-		}
-	}, [inventoryAnalysisData]);
 
 	useEffect(() => {
 		fetchStructureData();
@@ -278,8 +274,10 @@ export function InventoryAnalysisCard() {
 									{row['volume']}
 								</Cell>
 
-								<Cell align="right" width="10%">
-									{row['percentage']}
+								<Cell align="left" width="10%">
+									<Text size={3} weight="semi-bold">
+										{`${row['percentage'].toFixed(2)}%`}
+									</Text>
 								</Cell>
 							</Row>
 						)}
