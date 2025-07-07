@@ -6,6 +6,7 @@
 import React, {useEffect, useState} from 'react';
 
 import {Metrics} from '../../Metrics';
+import {getEmptyState} from '../EmptyState';
 import {
 	AssetTypeInfoPanelContext,
 	IAssetTypeInfoPanelContext,
@@ -17,24 +18,35 @@ export type Metric = {
 	total: number;
 };
 
+export type EmptyStateData = {
+	analyticsSettingsPortletURL: string;
+	connectedToAnalyticsCloud: boolean;
+	connectedToSpace: boolean;
+	isAdmin: boolean;
+	siteEditDepotEntryDepotAdminPortletURL: string;
+	siteSyncedToAnalyticsCloud: boolean;
+};
+
 const defaultSelectedMetric = 'Impressions';
 
 const metricsMock: Metric[] = [
-	{
-		comparison: 0,
-		title: 'Impressions',
-		total: 11,
-	},
-	{
-		comparison: -12.3,
-		title: 'Views',
-		total: 25321,
-	},
-	{
-		comparison: 32.1,
-		title: 'Downloads',
-		total: 220153310,
-	},
+
+	// {
+	// 	comparison: 0,
+	// 	title: 'Impressions',
+	// 	total: 11,
+	// },
+	// {
+	// 	comparison: -12.3,
+	// 	title: 'Views',
+	// 	total: 25321,
+	// },
+	// {
+	// 	comparison: 32.1,
+	// 	title: 'Downloads',
+	// 	total: 220153310,
+	// },
+
 ];
 
 async function fetchComponentData(fileId: number): Promise<Metric[]> {
@@ -43,8 +55,41 @@ async function fetchComponentData(fileId: number): Promise<Metric[]> {
 	return metricsMock;
 }
 
-const PerformanceTabContent = () => {
+async function fetchEmptyStateData(
+	_contentPerformanceDataFetchURL: string
+): Promise<EmptyStateData> {
+
+	// Endpoint
+
+	// const response = await fetch(contentPerformanceDataFetchURL, {
+	// 	method: 'GET',
+	// });
+
+	// return await response.json();
+
+	// Mock
+
+	return {
+		analyticsSettingsPortletURL: '/mock-analytics',
+		connectedToAnalyticsCloud: true,
+		connectedToSpace: true,
+		isAdmin: true,
+		siteEditDepotEntryDepotAdminPortletURL: '/mock-depot',
+		siteSyncedToAnalyticsCloud: true,
+	};
+}
+
+type Props = {
+	contentPerformanceDataFetchURL: string;
+};
+
+const PerformanceTabContent: React.FC<Props> = ({
+	contentPerformanceDataFetchURL,
+}) => {
 	const [metrics, setMetrics] = useState<Metric[]>([]);
+	const [emptyStateData, setEmptyStateData] = useState<EmptyStateData | null>(
+		null
+	);
 	const [selectedMetric, setSelectedMetric] = useState<string>(
 		defaultSelectedMetric
 	);
@@ -55,12 +100,31 @@ const PerformanceTabContent = () => {
 
 	useEffect(() => {
 		const fetchData = async () => {
-			const data = await fetchComponentData(fileContext.id || 0);
-			setMetrics(data);
+			try {
+				const metricsData = await fetchComponentData(
+					fileContext.id || 0
+				);
+				setMetrics(metricsData);
+
+				if (!metricsData.length) {
+					const emptyData = await fetchEmptyStateData(
+						contentPerformanceDataFetchURL
+					);
+
+					setEmptyStateData(emptyData);
+				}
+			}
+			catch (error) {
+				console.error(error);
+			}
 		};
 
 		fetchData();
-	});
+	}, [contentPerformanceDataFetchURL, fileContext.id]);
+
+	if (!metrics.length && emptyStateData) {
+		return getEmptyState(emptyStateData);
+	}
 
 	return (
 		<div>
