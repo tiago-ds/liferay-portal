@@ -12,6 +12,7 @@ export enum Colors {
 	Green = '#9be169',
 	Indigo = '#7785ff',
 	Indigo2 = '#6675ff',
+	LightGray = '#a6a8bb',
 	Orange = '#ffb46e',
 	Pink = '#ff73c3',
 	Pink2 = '#ff73c3',
@@ -45,6 +46,7 @@ export enum RangeSelectors {
 export enum MetricName {
 	Comments = 'commentsMetric',
 	Downloads = 'downloadsMetric',
+	Impressions = 'impressionMadeMetric',
 	Previews = 'previewsMetric',
 	Undefined = 'undefinedMetric',
 	Views = 'viewsMetric',
@@ -60,6 +62,7 @@ export enum AssetTypes {
 export enum MetricType {
 	Comments = 'COMMENTS',
 	Downloads = 'DOWNLOADS',
+	Impressions = 'IMPRESSIONS',
 	Previews = 'PREVIEWS',
 	Undefined = 'UNDEFINED',
 	Views = 'VIEWS',

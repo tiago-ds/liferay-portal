@@ -5,7 +5,7 @@
 
 import React, {useContext} from 'react';
 
-import {AnalyticsReportsContext} from '../../AnalyticsReportsContext';
+import {Context} from '../../Context';
 import {
 	AssetDeviceMetric,
 	fetchAssetDeviceMetric,
@@ -14,7 +14,7 @@ import useFetch from '../../hooks/useFetch';
 import {AssetTypes, MetricName, MetricType} from '../../types/global';
 import StateRenderer from '../StateRenderer';
 import Title from '../Title';
-import StackedBarChart from '../stacked-bar/StackedBarChart';
+import StackedBarChart from '../content-dashboard/stacked-bar/StackedBarChart';
 import {formatData} from './utils';
 
 export type Data = {
@@ -29,6 +29,7 @@ const TITLE: {
 } = {
 	[MetricType.Comments]: Liferay.Language.get('comments-by-technology'),
 	[MetricType.Downloads]: Liferay.Language.get('downloads-by-technology'),
+	[MetricType.Impressions]: Liferay.Language.get('impressions-by-technology'),
 	[MetricType.Previews]: Liferay.Language.get('previews-by-technology'),
 	[MetricType.Undefined]: Liferay.Language.get('undefined'),
 	[MetricType.Views]: Liferay.Language.get('views-by-technology'),
@@ -40,7 +41,7 @@ const Technology = () => {
 		assetType: initialAssetType,
 		filters,
 		groupId,
-	} = useContext(AnalyticsReportsContext);
+	} = useContext(Context);
 
 	const {data, error, loading} = useFetch<Data, AssetDeviceMetric>(
 		fetchAssetDeviceMetric,
@@ -55,7 +56,7 @@ const Technology = () => {
 		}
 	);
 
-	const title = TITLE[filters?.metric ?? MetricType.Undefined];
+	const title = TITLE[filters.metric];
 
 	return (
 		<div>
@@ -69,10 +70,7 @@ const Technology = () => {
 
 			<StateRenderer data={data} error={error} loading={loading}>
 				{({data}) => {
-					const formattedData = formatData(
-						data,
-						filters?.metric || MetricType.Undefined
-					);
+					const formattedData = formatData(data, filters.metric);
 
 					return (
 						<StackedBarChart

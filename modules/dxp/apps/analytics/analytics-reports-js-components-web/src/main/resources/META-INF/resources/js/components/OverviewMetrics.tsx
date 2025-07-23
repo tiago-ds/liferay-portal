@@ -5,14 +5,12 @@
 
 import React, {useContext, useEffect} from 'react';
 
-import {AnalyticsReportsContext} from '../AnalyticsReportsContext';
+import {Context} from '../Context';
 import {AssetMetricProps, fetchAssetMetric} from '../apis/analytics-reports';
-import OverviewMetric, {
-	TrendClassification,
-} from '../components/OverviewMetric';
+import OverviewMetric from '../components/OverviewMetric';
 import useFetch from '../hooks/useFetch';
 import {AssetTypes, MetricType} from '../types/global';
-import {assetMetrics} from '../utils/metrics';
+import {TrendClassification, assetMetrics} from '../utils/metrics';
 import StateRenderer from './StateRenderer';
 
 type MetricData = {
@@ -38,9 +36,10 @@ type Metrics = {
 export const MetricsTitle: Metrics = {
 	[MetricType.Comments]: Liferay.Language.get('comments'),
 	[MetricType.Downloads]: Liferay.Language.get('downloads'),
+	[MetricType.Impressions]: Liferay.Language.get('impressions'),
 	[MetricType.Previews]: Liferay.Language.get('previews'),
-	[MetricType.Views]: Liferay.Language.get('views'),
 	[MetricType.Undefined]: Liferay.Language.get('undefined'),
+	[MetricType.Views]: Liferay.Language.get('views'),
 };
 
 interface IOverviewMetricsWithDataProps {
@@ -50,10 +49,10 @@ interface IOverviewMetricsWithDataProps {
 const OverviewMetricsWithData: React.FC<IOverviewMetricsWithDataProps> = ({
 	data,
 }) => {
-	const {changeMetricFilter, filters} = useContext(AnalyticsReportsContext);
+	const {changeMetricFilter, filters} = useContext(Context);
 
 	useEffect(() => {
-		if (!filters.metric) {
+		if (filters.metric === MetricType.Undefined) {
 			changeMetricFilter(data.defaultMetric.metricType);
 		}
 	}, [changeMetricFilter, data.defaultMetric.metricType, filters.metric]);
@@ -78,9 +77,7 @@ const OverviewMetricsWithData: React.FC<IOverviewMetricsWithDataProps> = ({
 };
 
 const OverviewMetrics = () => {
-	const {assetId, assetType, filters, groupId} = useContext(
-		AnalyticsReportsContext
-	);
+	const {assetId, assetType, filters, groupId} = useContext(Context);
 
 	const {data, error, loading} = useFetch<Data, AssetMetricProps>(
 		fetchAssetMetric,
