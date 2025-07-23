@@ -71,6 +71,14 @@ const CurrentVsPreviousTooltip: React.FC<ICurrentVsPreviousTooltipProps> = ({
 					),
 				},
 				{
+					align: Alignments.Right,
+					label: metricData?.format?.('number'),
+				},
+			],
+		},
+		{
+			columns: [
+				{
 					label: () => (
 						<>
 							<span className="mr-2">
@@ -86,7 +94,7 @@ const CurrentVsPreviousTooltip: React.FC<ICurrentVsPreviousTooltipProps> = ({
 				},
 				{
 					align: Alignments.Right,
-					label: metricData?.format?.('number'),
+					label: prevMetricData?.format?.('number'),
 				},
 			],
 		},

@@ -9,6 +9,7 @@ export type DotProps = {
 	cx?: number;
 	cy?: number;
 	displayOutsideOfRecharts?: boolean;
+	fill?: string;
 	size?: number;
 	stroke: string;
 	strokeOpacity?: string;
@@ -172,4 +173,45 @@ export function PublishedVersionDot({
 	}
 
 	return <PublishedVersionCircle size={6} />;
+}
+
+export function PreviousDot({
+	cx,
+	cy,
+	displayOutsideOfRecharts = false,
+	fill,
+	stroke,
+	strokeOpacity,
+	value,
+}: DotProps) {
+	const PreviousCircle = ({size}: {size: number}) => {
+		const halfSize = size / 2;
+
+		return (
+			<circle
+				cx={cx || size}
+				cy={cy || size}
+				fill={fill}
+				fillOpacity={strokeOpacity}
+				r={displayOutsideOfRecharts ? halfSize - 1 : halfSize}
+				stroke={stroke}
+				strokeOpacity={strokeOpacity}
+				strokeWidth={2}
+			/>
+		);
+	};
+
+	if (value === null) {
+		return null;
+	}
+
+	if (displayOutsideOfRecharts) {
+		return (
+			<DotWrapper size={14}>
+				<PreviousCircle size={8} />
+			</DotWrapper>
+		);
+	}
+
+	return <PreviousCircle size={6} />;
 }

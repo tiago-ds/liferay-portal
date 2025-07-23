@@ -18,7 +18,7 @@ export interface IMetricsChartLegendProps {
 		dataKey: string;
 		dotColor: string;
 		title: string;
-		total: string | number;
+		total?: string | number;
 		url?: string;
 	}[];
 	onDatakeyChange: (dataKey: string | null) => void;
@@ -74,7 +74,9 @@ const MetricsChartLegend: React.FC<IMetricsChartLegendProps> = ({
 										'click-to-view-page'
 									)}
 								>
-									<Text size={3}>{`${title}: ${total}`}</Text>
+									<Text size={3}>
+										{`${title}`} {total && `: ${total}`}
+									</Text>
 								</ClayLink>
 							) : (
 								<Text
@@ -83,7 +85,7 @@ const MetricsChartLegend: React.FC<IMetricsChartLegendProps> = ({
 									}
 									size={3}
 								>
-									{`${title}: ${total}`}
+									{`${title} `} {total && `: ${total}`}
 								</Text>
 							)}
 						</li>
