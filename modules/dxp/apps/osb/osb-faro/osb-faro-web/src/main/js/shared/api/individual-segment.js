@@ -149,23 +149,23 @@ export function fetchMembershipChanges({
 export function fetchRealTimeMembership({
 	delta,
 	groupId,
-	orderIOMap,
+	// orderIOMap,
 	page,
 	query,
 	segmentId
 }) {
-	const orderParams = orderIOMap.first();
-	const orderByFields = buildOrderByFields(orderParams, INDIVIDUALS);
+	// const orderParams = orderIOMap.first();
+	// const orderByFields = buildOrderByFields(orderParams, INDIVIDUALS);
 
 	return sendRequest({
 		data: {
 			delta,
-			orderByFields,
+			// orderByFields,
 			page,
 			query
 		},
 		method: 'GET',
-		path: `${groupId}/individual_segment/${segmentId}/real_time_memberships`
+		path: `contacts/${groupId}/individual_segment/${segmentId}/real-time-memberships`
 	});
 }
 

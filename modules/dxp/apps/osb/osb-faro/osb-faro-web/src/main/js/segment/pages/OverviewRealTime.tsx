@@ -15,7 +15,6 @@ import {OrderByDirections, SegmentTypes} from 'shared/util/constants';
 import {OrderedMap} from 'immutable';
 import {OrderParams, Segment} from 'shared/util/records';
 import {ReferencedObjectsProvider} from 'segment/segment-editor/dynamic/context/referencedObjects';
-import {SegmentGrowthChart} from 'segment/components/Growth';
 import {Text} from '@clayui/core';
 import {useRequest} from 'shared/hooks/useRequest';
 import {useStatefulPagination} from 'shared/hooks/useStatefulPagination';
@@ -70,12 +69,12 @@ const MEMBERSHIP_CHANGE_FILTER_OPTION: FilterOptionType = {
 };
 
 const getAllMembers = (data: Data) => {
-	const {delta, groupId, id, orderIOMap, page, query} = data;
+	const {delta, groupId, id, page, query} = data;
 
 	return API.individualSegment.fetchRealTimeMembership({
 		delta,
 		groupId,
-		orderIOMap,
+		// orderIOMap,
 		page,
 		query,
 		segmentId: id
@@ -282,7 +281,7 @@ const RealTimeSegmentOverview: React.FC<IOverviewProps> = ({
 					) : (
 						<>
 							<div className='segment-growth-chart-container'>
-								<SegmentGrowthChart
+								{/* <SegmentGrowthChart
 									alwaysShowSelectedTooltip
 									data={data.map(item => ({
 										added: item.addedIndividualsCount,
@@ -307,7 +306,7 @@ const RealTimeSegmentOverview: React.FC<IOverviewProps> = ({
 									setSelectedPointState={
 										setSelectedPointState
 									}
-								/>
+								/> */}
 							</div>
 							<SelectedPointInfo
 								dateRange={dateRange}
