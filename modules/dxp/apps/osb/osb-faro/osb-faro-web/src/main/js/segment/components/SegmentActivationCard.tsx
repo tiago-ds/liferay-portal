@@ -6,7 +6,7 @@ import Form from '@clayui/form';
 import Label from '@clayui/label';
 import List from '@clayui/list';
 import Modal, {useModal} from '@clayui/modal';
-import React, {useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {addAlert} from 'shared/actions/alerts';
 import {Alert} from 'shared/types';
 import {connect, ConnectedProps} from 'react-redux';
@@ -299,16 +299,22 @@ const ConnectedActivationConfigurationModal = connector(
 );
 
 const SegmentActivationCard: React.FC<ISegmentActivationCardProps> = ({
-	segmentActivation,
+	segmentActivation: initialActivation,
 	segmentType
 }) => {
+	const [localActivation, setLocalActivation] = useState(initialActivation);
+
+	useEffect(() => {
+		setLocalActivation(initialActivation);
+	}, [initialActivation]);
+
 	const {
 		frequencyType,
 		scheduleEndDate,
 		scheduleStartDate,
 		scheduleType,
 		segmentActivationId
-	} = segmentActivation;
+	} = localActivation;
 
 	const {observer, onOpenChange, open} = useModal();
 
@@ -323,6 +329,11 @@ const SegmentActivationCard: React.FC<ISegmentActivationCardProps> = ({
 			},
 			segmentId
 		}).then(() => {
+			setLocalActivation(prev => ({
+				...prev,
+				...updatedValues
+			}));
+
 			addAlert({
 				alertType: Alert.Types.Success,
 				message: Liferay.Language.get('changes-to-segment-saved')
