@@ -5,21 +5,31 @@ import GlobalFilters from '../components/GlobalFilters';
 import OverviewSection from '../components/OverviewSection';
 import React, {useContext} from 'react';
 import {ChannelContext} from 'shared/context/channel';
-import {LifecycleContextProvider} from '../context/LifecycleContext';
+import {
+	LifecycleContextProvider,
+	useLifecycle
+} from '../context/LifecycleContext';
 import {useParams} from 'react-router-dom';
 import {useRequest} from 'shared/hooks/useRequest';
+
+const LifecycleOverview = ({groupId}: {groupId: string}) => {
+	const {filters} = useLifecycle();
+
+	const {data: overviewData, loading: overviewLoading} = useRequest({
+		dataSourceFn: API.lifecycle.fetchOverviewMetrics,
+		variables: {
+			filterString: filters.filterString,
+			groupId
+		}
+	});
+
+	return <OverviewSection loading={overviewLoading} metrics={overviewData} />;
+};
 
 const BaseLifecycle = () => {
 	const {selectedChannel} = useContext(ChannelContext);
 
 	const {channelId, groupId} = useParams();
-
-	const {data: overviewData, loading: overviewLoading} = useRequest({
-		dataSourceFn: API.lifecycle.fetchOverviewMetrics,
-		variables: {
-			groupId
-		}
-	});
 
 	return (
 		<LifecycleContextProvider>
@@ -47,10 +57,7 @@ const BaseLifecycle = () => {
 					</div>
 				</BasePage.SubHeader>
 				<BasePage.Body>
-					<OverviewSection
-						loading={overviewLoading}
-						metrics={overviewData}
-					/>
+					<LifecycleOverview groupId={groupId} />
 				</BasePage.Body>
 			</BasePage>
 		</LifecycleContextProvider>
