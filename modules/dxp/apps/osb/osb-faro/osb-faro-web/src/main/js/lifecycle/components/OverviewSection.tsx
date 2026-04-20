@@ -1,16 +1,12 @@
 import MetricCard from 'shared/components/MetricCard';
 import React from 'react';
-import {Metric} from '../../contacts/pages/account/utils/types';
+import {IOverviewMetric, OverviewMetricType} from '../utils/types';
 import {SectionHeader} from 'individual/profile/components/SectionHeader';
 import {sub} from 'shared/util/lang';
 
 interface IOverviewSectionProps {
 	loading?: boolean;
-	metrics?: {
-		atRiskAccounts?: Metric;
-		progressedAccounts?: Metric;
-		staticAccounts?: Metric;
-	};
+	metrics?: IOverviewMetric[];
 }
 
 const renderTrendLabel = (percentageNode: React.ReactNode) =>
@@ -20,9 +16,12 @@ const OverviewSection: React.FC<IOverviewSectionProps> = ({
 	loading = false,
 	metrics
 }) => {
-	const atRiskAccounts = metrics?.atRiskAccounts;
-	const netNewPipelineGenerated = metrics?.progressedAccounts;
-	const stalledAccounts = metrics?.staticAccounts;
+	const getMetric = (metricType: OverviewMetricType) =>
+		metrics?.find(metric => metric.metricType === metricType);
+
+	const atRiskAccounts = getMetric(OverviewMetricType.AtRisk);
+	const netNewPipelineGenerated = getMetric(OverviewMetricType.NewPipeline);
+	const stalledAccounts = getMetric(OverviewMetricType.Stalled);
 
 	const cardContainerClassName = 'col-12 col-lg-4 d-flex';
 	const bodyClassName = 'd-flex flex-column justify-content-around';

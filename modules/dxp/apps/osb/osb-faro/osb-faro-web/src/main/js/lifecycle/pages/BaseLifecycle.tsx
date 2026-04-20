@@ -18,8 +18,10 @@ const LifecycleOverview = ({groupId}: {groupId: string}) => {
 	const {data: overviewData, loading: overviewLoading} = useRequest({
 		dataSourceFn: API.lifecycle.fetchOverviewMetrics,
 		variables: {
-			filterString: filters.filterString,
-			groupId
+			country: filters.countryFilter,
+			groupId,
+			industry: filters.industryFilter,
+			lifecycleId: 1
 		}
 	});
 
