@@ -10,6 +10,7 @@ import {
 	LifecycleContextProvider,
 	useLifecycle
 } from '../context/LifecycleContext';
+import {SectionHeader} from 'shared/components/SectionHeader';
 import {useParams} from 'react-router-dom';
 import {useRequest} from 'shared/hooks/useRequest';
 
@@ -35,6 +36,11 @@ const LifecycleOverview = ({
 	return (
 		<>
 			<OverviewSection loading={overviewLoading} metrics={overviewData} />
+
+			<SectionHeader
+				icon='box-container'
+				title={Liferay.Language.get('accounts')}
+			/>
 
 			<AccountsDataSet
 				channelId={channelId}
