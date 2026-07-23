@@ -30,6 +30,8 @@ interface IFetchCatalogFields {
 	sort?: string;
 }
 
+export const CATALOG_FIELDS_PAGE_SIZE_ALL = -1;
+
 export function fetchCatalogFields({
 	entity = 'account',
 	groupId,

@@ -1,15 +1,17 @@
 import * as API from 'shared/api';
 import Card from 'shared/components/Card';
 import DocumentTitle from 'shared/components/DocumentTitle';
+import ErrorDisplay from 'shared/components/ErrorDisplay';
 import LifecycleSettingsToolbar from 'lifecycle/components/LifecycleSettingsToolbar';
 import Loading from 'shared/components/Loading';
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import RouteNotFound from 'shared/components/RouteNotFound';
 import StageConfigurationPanel from 'lifecycle/components/StageConfigurationPanel';
 import ClayForm, {ClayInput} from '@clayui/form';
 import ClayIcon from '@clayui/icon';
 import {Alert} from 'shared/types';
 import {addAlert} from 'shared/actions/alerts';
+import {CATALOG_FIELDS_PAGE_SIZE_ALL} from 'shared/api/catalog';
 import {buildCreateLifecyclePayload} from 'lifecycle/utils/lifecyclePayload';
 import {isStageConfigured} from 'lifecycle/utils/lifecycleOperators';
 import {
@@ -40,10 +42,32 @@ const CreateLifecycle = () => {
 		variables: {groupId: groupId!},
 	});
 
-	const {data: catalogFields, loading: catalogLoading} = useRequest({
+	const {
+		data: catalogFields,
+		error: catalogError,
+		loading: catalogLoading,
+		refetch: refetchCatalog,
+	} = useRequest({
 		dataSourceFn: API.catalog.fetchCatalogFields,
-		variables: {entity: 'account', groupId: groupId!},
+		variables: {
+			entity: 'account',
+			groupId: groupId!,
+			pageSize: CATALOG_FIELDS_PAGE_SIZE_ALL,
+		},
 	});
+
+	useEffect(() => {
+		if (catalogError) {
+			dispatch(
+				addAlert({
+					alertType: Alert.Types.Error,
+					message: Liferay.Language.get(
+						'an-unexpected-error-occurred'
+					),
+				})
+			);
+		}
+	}, [catalogError, dispatch]);
 
 	if (loading || catalogLoading) {
 		return <Loading />;
@@ -51,6 +75,10 @@ const CreateLifecycle = () => {
 
 	if (lifecycles?.length) {
 		return <RouteNotFound />;
+	}
+
+	if (catalogError) {
+		return <ErrorDisplay onReload={refetchCatalog} />;
 	}
 
 	const canCreate =

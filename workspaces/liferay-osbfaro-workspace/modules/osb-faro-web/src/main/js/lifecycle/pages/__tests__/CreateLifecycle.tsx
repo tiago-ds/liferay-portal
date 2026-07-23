@@ -3,6 +3,7 @@ import CreateLifecycle from '../CreateLifecycle';
 import React from 'react';
 import {fireEvent, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
+import {CATALOG_FIELDS_PAGE_SIZE_ALL} from 'shared/api/catalog';
 import {Routes, toRoute} from 'shared/util/router';
 import {useRequest} from 'shared/hooks/useRequest';
 
@@ -12,8 +13,10 @@ jest.mock('shared/hooks/useRequest', () => ({
 	useRequest: jest.fn(),
 }));
 
+const mockDispatch = jest.fn();
+
 jest.mock('react-redux', () => ({
-	useDispatch: () => jest.fn(),
+	useDispatch: () => mockDispatch,
 }));
 
 const mockPush = jest.fn();
@@ -125,5 +128,41 @@ describe('CreateLifecycle', () => {
 
 		expect(screen.queryByText('Lifecycle Settings')).toBeNull();
 		expect(screen.queryByText('Stage Configuration')).toBeNull();
+	});
+
+	it('requests the entire catalog in a single page', () => {
+		renderPage();
+
+		expect(mockedUseRequest).toHaveBeenCalledWith(
+			expect.objectContaining({
+				dataSourceFn: (API as any).catalog.fetchCatalogFields,
+				variables: expect.objectContaining({
+					entity: 'account',
+					pageSize: CATALOG_FIELDS_PAGE_SIZE_ALL,
+				}),
+			})
+		);
+	});
+
+	it('surfaces an error state when the catalog request fails', () => {
+		const refetch = jest.fn();
+
+		mockedUseRequest.mockImplementation(({dataSourceFn}: any) =>
+			dataSourceFn === (API as any).catalog.fetchCatalogFields
+				? {data: null, error: true, loading: false, refetch}
+				: {data: [], error: false, loading: false}
+		);
+
+		renderPage();
+
+		expect(
+			screen.getByText('An unexpected error occurred.')
+		).toBeInTheDocument();
+		expect(screen.queryByText('Stage Configuration')).toBeNull();
+		expect(mockDispatch).toHaveBeenCalled();
+
+		fireEvent.click(screen.getByRole('button', {name: 'Reload'}));
+
+		expect(refetch).toHaveBeenCalled();
 	});
 });
