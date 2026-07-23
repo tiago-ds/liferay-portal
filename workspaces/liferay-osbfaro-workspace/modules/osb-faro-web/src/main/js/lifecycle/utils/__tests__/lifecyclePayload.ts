@@ -10,7 +10,6 @@ import {
 const baseStage: IStageConfig = {
 	conditionValue: null,
 	description: 'A stage',
-	entity: 'account',
 	field: null,
 	fieldDataCategory: null,
 	fieldDataType: null,
@@ -78,6 +77,30 @@ describe('buildStageFilter', () => {
 				operator: 'gt',
 			})
 		).toBe('(annualRevenue gt 1000)');
+	});
+
+	it('returns an empty filter when a numeric value is missing', () => {
+		expect(
+			buildStageFilter({
+				...baseStage,
+				conditionValue: null,
+				field: 'annualRevenue',
+				fieldDataCategory: 'Number',
+				operator: 'gt',
+			})
+		).toBe('');
+	});
+
+	it('returns an empty filter when a numeric value is not a number', () => {
+		expect(
+			buildStageFilter({
+				...baseStage,
+				conditionValue: 'abc',
+				field: 'annualRevenue',
+				fieldDataCategory: 'Number',
+				operator: 'gt',
+			})
+		).toBe('');
 	});
 
 	it('builds null checks for value-less operators', () => {

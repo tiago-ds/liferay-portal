@@ -42,21 +42,18 @@ export type ConditionKey = 'field' | 'operator';
 
 export interface IConditionStep {
 	key: ConditionKey;
-	options: IEntityOption[];
 	placeholder: string;
 }
 
 export const CONDITION_STEPS: IConditionStep[] = [
 	{
 		key: 'field',
-		options: [],
 		placeholder: sub(Liferay.Language.get('select-x'), [
 			Liferay.Language.get('field'),
 		]) as string,
 	},
 	{
 		key: 'operator',
-		options: [],
 		placeholder: sub(Liferay.Language.get('select-x'), [
 			Liferay.Language.get('operator'),
 		]) as string,
@@ -66,7 +63,6 @@ export const CONDITION_STEPS: IConditionStep[] = [
 export interface IStageConfig {
 	conditionValue: string | null;
 	description: string;
-	entity: string | null;
 	field: string | null;
 	fieldDataCategory: string | null;
 	fieldDataType: string | null;
@@ -79,7 +75,6 @@ export const createDefaultStageConfigs = (): IStageConfig[] =>
 	LIFECYCLE_STAGE_ORDER.map((stageType) => ({
 		conditionValue: null,
 		description: STAGE_DESCRIPTIONS[stageType],
-		entity: 'account',
 		field: null,
 		fieldDataCategory: null,
 		fieldDataType: null,

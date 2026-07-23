@@ -179,7 +179,7 @@ const LifecycleStagesSection = () => {
 };
 
 const LifecycleAccounts = () => {
-	const {filters, lifecycleId} = useLifecycle();
+	const {filters, lifecycleId, stageSelectionNonce} = useLifecycle();
 
 	const {channelId, groupId} = useParams();
 
@@ -198,6 +198,7 @@ const LifecycleAccounts = () => {
 				groupId={groupId!}
 				industryFilter={filters.industryFilter}
 				lifecycleStageFilter={filters.lifecycleStageFilter}
+				stageSelectionNonce={stageSelectionNonce}
 			/>
 		</section>
 	);

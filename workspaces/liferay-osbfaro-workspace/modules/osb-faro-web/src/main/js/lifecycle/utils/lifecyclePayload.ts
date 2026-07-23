@@ -48,7 +48,13 @@ const buildExpression = (stage: IStageConfig): string => {
 
 	const raw = conditionValue ?? '';
 
-	const literal = type === 'Number' || type === 'Duration' ? raw : quote(raw);
+	const isNumeric = type === 'Number' || type === 'Duration';
+
+	if (isNumeric && (raw.trim() === '' || !Number.isFinite(Number(raw)))) {
+		return '';
+	}
+
+	const literal = isNumeric ? raw.trim() : quote(raw);
 
 	switch (operator) {
 		case 'after':

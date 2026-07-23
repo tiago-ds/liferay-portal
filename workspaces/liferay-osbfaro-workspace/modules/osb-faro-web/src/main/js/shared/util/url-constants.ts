@@ -35,9 +35,6 @@ enum URLConstants {
 	IndividualsDashboardInterestsDocumentation = 'https://learn.liferay.com/w/dxp/personalization/analytics-cloud/people/individuals-analytics#interests',
 	IndividualsDashboardDocumentation = 'https://learn.liferay.com/w/dxp/personalization/analytics-cloud/people/individuals-analytics',
 	InterestTopicsDocumentation = 'https://learn.liferay.com/w/dxp/personalization/analytics-cloud/workspace-data/definitions',
-
-	// TODO: Replace with the "Learn more about Lifecycle capabilities" URL
-
 	LifecycleDocumentation = 'https://learn.liferay.com/w/liferay-data-platform/index',
 	MaintenanceModeAndDeprecationDocumentation = 'https://help.liferay.com/hc/en-us/articles/360015767952-Maintenance-Mode-and-Deprecation',
 	PrivacyPolicy = 'https://www.liferay.com/privacy-policy',

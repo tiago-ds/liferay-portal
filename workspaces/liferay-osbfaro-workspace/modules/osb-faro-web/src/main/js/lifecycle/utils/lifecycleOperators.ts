@@ -57,5 +57,9 @@ export const resolveOperatorType = (
 		return 'Duration';
 	}
 
-	return dataCategory as OperatorType;
+	if (dataCategory in OPERATORS_BY_TYPE) {
+		return dataCategory as OperatorType;
+	}
+
+	return null;
 };

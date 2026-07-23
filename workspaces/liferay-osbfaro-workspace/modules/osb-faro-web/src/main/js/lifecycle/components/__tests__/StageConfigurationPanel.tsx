@@ -18,7 +18,6 @@ jest.unmock('react-dom');
 const baseValue: IStageConfig = {
 	conditionValue: null,
 	description: '',
-	entity: 'account',
 	field: null,
 	fieldDataCategory: null,
 	fieldDataType: null,
@@ -89,7 +88,6 @@ describe('StageConfigurationPanel', () => {
 				...baseValue,
 				conditionValue: 'true',
 				description: 'Cold accounts',
-				entity: 'account',
 				field: 'HasActivePipeline',
 				operator: 'is',
 			},

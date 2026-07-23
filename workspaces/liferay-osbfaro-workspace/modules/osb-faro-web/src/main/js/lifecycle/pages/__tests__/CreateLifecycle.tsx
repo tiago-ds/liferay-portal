@@ -1,7 +1,8 @@
 import * as API from 'shared/api';
 import CreateLifecycle from '../CreateLifecycle';
 import React from 'react';
-import {fireEvent, render, screen} from '@testing-library/react';
+import {Alert} from 'shared/types';
+import {fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
 import {Routes, toRoute} from 'shared/util/router';
 import {useRequest} from 'shared/hooks/useRequest';
@@ -12,9 +13,35 @@ jest.mock('shared/hooks/useRequest', () => ({
 	useRequest: jest.fn(),
 }));
 
+const mockDispatch = jest.fn();
+
 jest.mock('react-redux', () => ({
-	useDispatch: () => jest.fn(),
+	useDispatch: () => mockDispatch,
 }));
+
+jest.mock('shared/actions/alerts', () => ({
+	addAlert: jest.fn((alert) => alert),
+}));
+
+jest.mock('lifecycle/utils/stageConfiguration', () => {
+	const actual = jest.requireActual('lifecycle/utils/stageConfiguration');
+
+	return {
+		...actual,
+		createDefaultStageConfigs: jest.fn(() =>
+			actual.LIFECYCLE_STAGE_ORDER.map(() => ({
+				conditionValue: '1000',
+				description: 'A configured stage',
+				field: 'account.annualRevenue',
+				fieldDataCategory: 'Number',
+				fieldDataType: 'NUMERIC',
+				maxTimeDays: actual.DEFAULT_MAX_DAYS,
+				maxTimeEnabled: true,
+				operator: 'gt',
+			}))
+		),
+	};
+});
 
 const mockPush = jest.fn();
 
@@ -125,5 +152,60 @@ describe('CreateLifecycle', () => {
 
 		expect(screen.queryByText('Lifecycle Settings')).toBeNull();
 		expect(screen.queryByText('Stage Configuration')).toBeNull();
+	});
+
+	it('creates the lifecycle, alerts success, and navigates to the dashboard', async () => {
+		renderPage();
+
+		fireEvent.change(screen.getByLabelText('Lifecycle Name'), {
+			target: {value: 'My Lifecycle'},
+		});
+
+		fireEvent.click(screen.getByRole('button', {name: 'Create'}));
+
+		await waitFor(() =>
+			expect(API.lifecycle.createLifecycle).toHaveBeenCalled()
+		);
+
+		const payload = (API.lifecycle.createLifecycle as jest.Mock).mock
+			.calls[0][0];
+
+		expect(payload).toEqual(
+			expect.objectContaining({
+				channelId: '123',
+				name: 'My Lifecycle',
+			})
+		);
+		expect(payload.stages).toHaveLength(6);
+
+		await waitFor(() =>
+			expect(mockPush).toHaveBeenCalledWith(lifecycleURL)
+		);
+
+		expect(mockDispatch).toHaveBeenCalledWith(
+			expect.objectContaining({alertType: Alert.Types.Success})
+		);
+	});
+
+	it('alerts an error and does not navigate when creation fails', async () => {
+		(API.lifecycle.createLifecycle as jest.Mock).mockRejectedValue(
+			new Error('failed')
+		);
+
+		renderPage();
+
+		fireEvent.change(screen.getByLabelText('Lifecycle Name'), {
+			target: {value: 'My Lifecycle'},
+		});
+
+		fireEvent.click(screen.getByRole('button', {name: 'Create'}));
+
+		await waitFor(() =>
+			expect(mockDispatch).toHaveBeenCalledWith(
+				expect.objectContaining({alertType: Alert.Types.Error})
+			)
+		);
+
+		expect(mockPush).not.toHaveBeenCalled();
 	});
 });
