@@ -1,4 +1,5 @@
 import ActivitiesChart from 'contacts/components/ActivitiesChart';
+import ActivitySection from 'shared/components/ActivitySection';
 import Card from 'shared/components/Card';
 import ClayButton from '@clayui/button';
 import ClayIcon from '@clayui/icon';
@@ -249,17 +250,21 @@ const ActivityStreamCard: React.FC<IActivityStreamCardProps> = ({
 					</Card.Body>
 
 					<Card.Body className="p-0">
-						<PaginatedVerticalTimeline
-							{...sessionsMappedResults}
-							delta={delta}
-							initialExpanded={false}
-							noResultsRenderer={noResultsRenderer}
-							onDeltaChange={onDeltaChange}
-							onPageChange={onPageChange}
-							page={page}
-							timeZoneId={timeZoneId}
-							total={sessionsTotal}
-						/>
+						<ActivitySection
+							label={Liferay.Language.get('timed-activity')}
+						>
+							<PaginatedVerticalTimeline
+								{...sessionsMappedResults}
+								delta={delta}
+								initialExpanded={false}
+								noResultsRenderer={noResultsRenderer}
+								onDeltaChange={onDeltaChange}
+								onPageChange={onPageChange}
+								page={page}
+								timeZoneId={timeZoneId}
+								total={sessionsTotal}
+							/>
+						</ActivitySection>
 					</Card.Body>
 				</WrapSafeResults>
 			)}
