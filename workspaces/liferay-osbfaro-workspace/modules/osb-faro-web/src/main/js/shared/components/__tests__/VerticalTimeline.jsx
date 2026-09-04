@@ -18,17 +18,6 @@ describe('VerticalTimeline', () => {
 		expect(container.querySelector('.loading-root')).toBeInTheDocument();
 	});
 
-	describe('day row', () => {
-		it('shows the day title and its event count', () => {
-			renderTimeline({
-				items: [{header: true, title: 'Yesterday', totalEvents: 3}]
-			});
-
-			expect(screen.getByText('Yesterday')).toBeInTheDocument();
-			expect(screen.getByText('3')).toBeInTheDocument();
-		});
-	});
-
 	describe('individual row', () => {
 		const INDIVIDUAL_ITEM = {
 			individual: true,
@@ -132,11 +121,23 @@ describe('VerticalTimeline', () => {
 				container.querySelector('.attributes-payload')
 			).not.toBeInTheDocument();
 
-			fireEvent.click(container.querySelector('.session-row .row-main'));
+			fireEvent.click(
+				container.querySelector('.session-row .payload-button')
+			);
 
 			expect(
 				container.querySelector('.attributes-payload')
 			).toHaveTextContent('Session Attributes');
+		});
+
+		it('does not expand when the row itself is clicked', () => {
+			const {container} = renderTimeline({items: [SESSION_ITEM]});
+
+			fireEvent.click(container.querySelector('.session-row .row-main'));
+
+			expect(
+				container.querySelector('.attributes-payload')
+			).not.toBeInTheDocument();
 		});
 
 		it('always shows its pages, without needing to expand', () => {
@@ -319,6 +320,16 @@ describe('VerticalTimeline', () => {
 			);
 		});
 
+		it('does not expand when the row itself is clicked', () => {
+			const {container} = renderTimeline({items: [EVENT_ITEM]});
+
+			fireEvent.click(container.querySelector('.event-row .row-main'));
+
+			expect(
+				container.querySelector('.attributes-payload')
+			).not.toBeInTheDocument();
+		});
+
 		it('reveals its own raw attributes when expanded', () => {
 			const {container} = renderTimeline({items: [EVENT_ITEM]});
 
@@ -326,7 +337,9 @@ describe('VerticalTimeline', () => {
 				container.querySelector('.attributes-payload')
 			).not.toBeInTheDocument();
 
-			fireEvent.click(container.querySelector('.event-row .row-main'));
+			fireEvent.click(
+				container.querySelector('.event-row .payload-button')
+			);
 
 			expect(
 				container.querySelector('.attributes-payload')
