@@ -31,7 +31,6 @@ import {
 	mergeCampaignDays,
 } from 'shared/util/activities';
 import {mapListResultsToProps} from 'shared/util/mappers';
-import {ENABLE_DAY_LEVEL_ACTIVITY} from 'shared/util/feature-flags';
 import {SessionEntityTypes} from 'shared/util/constants';
 import {toThousands} from 'shared/util/numbers';
 import {useParams} from 'react-router-dom';
@@ -127,22 +126,19 @@ const AccountActivityStreamCard: React.FC<IActivityStreamCardProps> = ({
 		},
 	});
 
-	const campaignTouches = useCampaignTouchesByDay(
-		{
-			accountId,
-			channelId,
-			entityId: '',
-			entityType: SessionEntityTypes.Individual,
-			keywords,
-			...getSessionsDateRange({
-				activityHistory,
-				interval,
-				rangeSelectors,
-				selectedPoint,
-			}),
-		},
-		{skip: !ENABLE_DAY_LEVEL_ACTIVITY}
-	);
+	const campaignTouches = useCampaignTouchesByDay({
+		accountId,
+		channelId,
+		entityId: '',
+		entityType: SessionEntityTypes.Individual,
+		keywords,
+		...getSessionsDateRange({
+			activityHistory,
+			interval,
+			rangeSelectors,
+			selectedPoint,
+		}),
+	});
 
 	const sessionsResponse = useQuery<
 		AccountUserSessionData,
@@ -247,10 +243,9 @@ const AccountActivityStreamCard: React.FC<IActivityStreamCardProps> = ({
 	const trendMetric =
 		trendResponse.data?.eventsByUserSessions?.totalEventsMetric;
 
-	const campaignResponsesTotal = ENABLE_DAY_LEVEL_ACTIVITY
-		? metricResponse.data?.eventMetric?.totalCampaignActivitiesMetric
-				?.value ?? 0
-		: 0;
+	const campaignResponsesTotal =
+		metricResponse.data?.eventMetric?.totalCampaignActivitiesMetric
+			?.value ?? 0;
 
 	const selected = hasSelectedPoint || selectedPoint !== undefined;
 
@@ -281,16 +276,10 @@ const AccountActivityStreamCard: React.FC<IActivityStreamCardProps> = ({
 					label: Liferay.Language.get('sessions'),
 					value: toThousands(totalSessions ?? 0),
 				},
-				...(ENABLE_DAY_LEVEL_ACTIVITY
-					? [
-							{
-								label: Liferay.Language.get(
-									'campaign-responses'
-								),
-								value: toThousands(totalCampaignResponses ?? 0),
-							},
-						]
-					: []),
+				{
+					label: Liferay.Language.get('campaign-responses'),
+					value: toThousands(totalCampaignResponses ?? 0),
+				},
 			]}
 			chartView={chartView}
 			delta={delta}

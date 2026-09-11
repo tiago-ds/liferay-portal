@@ -12,7 +12,6 @@ import {
 } from 'shared/util/date';
 import {getSafeDecodedURIComponent} from './util';
 import {AssetTypes, TimeIntervals} from 'shared/util/constants';
-import {ENABLE_DAY_LEVEL_ACTIVITY} from 'shared/util/feature-flags';
 import {RangeSelectors} from 'shared/types';
 import {Routes, toRoute} from 'shared/util/router';
 import {sub} from 'shared/util/lang';
@@ -180,11 +179,7 @@ export const mapEventMetricToActivityHistory = (
 
 			return {
 				intervalInitDate: moment.utc(key).valueOf(),
-				totalActivities:
-					value +
-					(ENABLE_DAY_LEVEL_ACTIVITY
-						? totalCampaignResponses ?? 0
-						: 0),
+				totalActivities: value + (totalCampaignResponses ?? 0),
 				totalCampaignResponses,
 				totalEvents: value,
 				totalSessions:

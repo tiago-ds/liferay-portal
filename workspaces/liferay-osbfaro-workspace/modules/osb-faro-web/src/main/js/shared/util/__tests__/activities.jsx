@@ -17,13 +17,6 @@ import {
 	toDayKey
 } from '../activities';
 
-jest.mock('shared/util/feature-flags', () => ({
-	...jest.requireActual('shared/util/feature-flags'),
-	ENABLE_DAY_LEVEL_ACTIVITY: true
-}));
-
-const featureFlags = jest.requireMock('shared/util/feature-flags');
-
 describe('activities', () => {
 	describe('buildLegendItems', () => {
 		it('should return an array formatted for use as items in ChangeLegend', () => {
@@ -681,8 +674,6 @@ describe('activities', () => {
 		});
 
 		it('totals the events and the campaign activities of each interval', () => {
-			featureFlags.ENABLE_DAY_LEVEL_ACTIVITY = true;
-
 			const points = mapEventMetricToActivityHistory(
 				buildEventMetric({
 					totalCampaignActivitiesMetric: {
@@ -698,8 +689,6 @@ describe('activities', () => {
 		});
 
 		it('totals an interval the campaigns alone reached', () => {
-			featureFlags.ENABLE_DAY_LEVEL_ACTIVITY = true;
-
 			const points = mapEventMetricToActivityHistory({
 				totalCampaignActivitiesMetric: {
 					histogram: {metrics: [{value: 4}]}
@@ -712,25 +701,6 @@ describe('activities', () => {
 			});
 
 			expect(points[0].totalActivities).toBe(4);
-		});
-
-		it('totals the events alone while the day level activity is off', () => {
-			featureFlags.ENABLE_DAY_LEVEL_ACTIVITY = false;
-
-			const points = mapEventMetricToActivityHistory(
-				buildEventMetric({
-					totalCampaignActivitiesMetric: {
-						histogram: {metrics: [{value: 5}, {value: 1}]}
-					}
-				})
-			);
-
-			expect(points.map(({totalActivities}) => totalActivities)).toEqual([
-				7,
-				4
-			]);
-
-			featureFlags.ENABLE_DAY_LEVEL_ACTIVITY = true;
 		});
 	});
 
