@@ -5,6 +5,7 @@ import {TREND_FRAGMENT_EVENT_METRIC} from 'shared/queries/fragments';
 
 export interface AccountEventMetricsData {
 	eventMetric: {
+		totalCampaignActivitiesMetric: Metric;
 		totalEventsMetric: Metric;
 		totalSessionsMetric: Metric;
 	};
@@ -51,6 +52,9 @@ export default gql`
 			rangeKey: $rangeKey
 			rangeStart: $rangeStart
 		) {
+			totalCampaignActivitiesMetric {
+				...trendFragmentEventMetric
+			}
 			totalEventsMetric {
 				...trendFragmentEventMetric
 			}

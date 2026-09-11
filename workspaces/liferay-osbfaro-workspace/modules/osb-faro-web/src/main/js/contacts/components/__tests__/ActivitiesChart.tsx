@@ -19,8 +19,18 @@ jest.mock('recharts', () => {
 });
 
 const history = [
-	{intervalInitDate: 1717200000000, totalEvents: 3, totalSessions: 2},
-	{intervalInitDate: 1717286400000, totalEvents: 5, totalSessions: 4},
+	{
+		intervalInitDate: 1717200000000,
+		totalActivities: 3,
+		totalEvents: 3,
+		totalSessions: 2,
+	},
+	{
+		intervalInitDate: 1717286400000,
+		totalActivities: 5,
+		totalEvents: 5,
+		totalSessions: 4,
+	},
 ];
 
 const renderChart = (props = {}) =>

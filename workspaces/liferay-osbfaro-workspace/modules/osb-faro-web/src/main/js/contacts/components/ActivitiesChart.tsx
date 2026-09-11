@@ -58,6 +58,7 @@ interface IChartProps<T> extends React.HTMLAttributes<HTMLElement> {
 
 interface IActivitiesHistoryProps<initDateType = number> {
 	intervalInitDate: initDateType;
+	totalActivities: number;
 	totalCampaignResponses?: number;
 	totalEvents: number;
 	totalSessions?: number;
@@ -174,7 +175,7 @@ const ActivitiesChart: React.FC<
 
 	const showFixedTooltip = hasSelectedPoint && mouseOutside;
 
-	const yAxisWidth = getYAxisWidth(history, 'totalEvents');
+	const yAxisWidth = getYAxisWidth(history, 'totalActivities');
 
 	return (
 		<ResponsiveContainer height={height}>
@@ -308,7 +309,7 @@ const ActivitiesChart: React.FC<
 					<Line
 						activeDot={{r: 5}}
 						animationDuration={ANIMATION_DURATION.line}
-						dataKey="totalEvents"
+						dataKey="totalActivities"
 						dot={false}
 						stroke={CHART_BLUE}
 						strokeWidth={2}
@@ -317,7 +318,7 @@ const ActivitiesChart: React.FC<
 				) : (
 					<Bar
 						animationDuration={ANIMATION_DURATION.bar}
-						dataKey="totalEvents"
+						dataKey="totalActivities"
 						fill={CHART_BLUE}
 						onMouseEnter={(e, index) => setHoverIndex(index)}
 						onMouseLeave={() => setHoverIndex(-1)}

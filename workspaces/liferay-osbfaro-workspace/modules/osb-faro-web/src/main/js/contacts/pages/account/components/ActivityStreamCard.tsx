@@ -247,6 +247,11 @@ const AccountActivityStreamCard: React.FC<IActivityStreamCardProps> = ({
 	const trendMetric =
 		trendResponse.data?.eventsByUserSessions?.totalEventsMetric;
 
+	const campaignResponsesTotal = ENABLE_DAY_LEVEL_ACTIVITY
+		? metricResponse.data?.eventMetric?.totalCampaignActivitiesMetric
+				?.value ?? 0
+		: 0;
+
 	const selected = hasSelectedPoint || selectedPoint !== undefined;
 
 	const {intervalInitDate: selectedIntervalInitDate} =
@@ -367,7 +372,7 @@ const AccountActivityStreamCard: React.FC<IActivityStreamCardProps> = ({
 			trendSummary={{
 				classification: trendMetric?.trend?.trendClassification,
 				percentage: trendMetric?.trend?.percentage ?? 0,
-				value: trendMetric?.value ?? 0,
+				value: (trendMetric?.value ?? 0) + campaignResponsesTotal,
 			}}
 		/>
 	);
