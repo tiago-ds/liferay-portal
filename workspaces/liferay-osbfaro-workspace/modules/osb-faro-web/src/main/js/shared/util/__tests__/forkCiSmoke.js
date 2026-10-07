@@ -1,5 +1,5 @@
 describe('fork CI smoke', () => {
-	it('fails on purpose', () => {
-		expect(1).toBe(2);
+	it('passes', () => {
+		expect(1).toBe(1);
 	});
 });
