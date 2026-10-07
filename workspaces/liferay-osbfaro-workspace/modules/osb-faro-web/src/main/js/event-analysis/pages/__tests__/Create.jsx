@@ -96,6 +96,26 @@ describe('Event Analysis Create', () => {
 		expect(getByLabelText(/^title/i)).toBeInTheDocument();
 	});
 
+	it('should render the conditions in a side panel outside the editor', async () => {
+		const {container, getByRole} = render(<WrappedComponent />);
+
+		await waitForLoadingToBeRemoved(container);
+
+		expect(
+			getByRole('heading', {name: /conditions.library/i})
+		).toBeInTheDocument();
+		expect(
+			container.querySelector(
+				'.event-analysis-conditions-panel .event-analysis-builder-root'
+			)
+		).toBeInTheDocument();
+		expect(
+			container.querySelector(
+				'.event-analysis-editor-root .event-analysis-builder-root'
+			)
+		).toBeNull();
+	});
+
 	it('should render empty state', async () => {
 		const {container, getByPlaceholderText, getByText} = render(
 			<WrappedComponent />
@@ -109,17 +129,13 @@ describe('Event Analysis Create', () => {
 			container.querySelector('.dropdown-range-key-root button')
 				.textContent
 		).toEqual('Last 30 days');
-		expect(container.querySelector('.event-list').textContent).toBe('');
+		expect(container.querySelector('.event-list')).toBeNull();
 		expect(
-			container.querySelector(
-				'.attribute-breakdown-section-root .attribute-container'
-			)
-		).toBeFalsy();
+			container.querySelector('.attribute-breakdown-section-root')
+		).toBeNull();
 		expect(
-			container.querySelector(
-				'.attribute-filter-section-root .attribute-container'
-			)
-		).toBeFalsy();
+			container.querySelector('.attribute-filter-section-root')
+		).toBeNull();
 		expect(
 			container.querySelector('.compare-to-previous-checkbox input')
 				.checked
@@ -135,7 +151,7 @@ describe('Event Analysis Create', () => {
 	});
 
 	it('should enable the save button when there is at least one name and one event added', async () => {
-		const {container, getByLabelText, getByText} = render(
+		const {container, getByLabelText, getByRole, getByText} = render(
 			<WrappedComponent />
 		);
 
@@ -153,9 +169,7 @@ describe('Event Analysis Create', () => {
 
 		expect(getByText('Save Analysis')).toBeDisabled();
 
-		const addEventButton = container.querySelector('.add-event-button');
-
-		fireEvent.click(addEventButton);
+		fireEvent.click(getByRole('button', {name: /add.event/i}));
 
 		jest.runOnlyPendingTimers();
 

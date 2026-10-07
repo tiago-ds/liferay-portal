@@ -1,13 +1,15 @@
 import BaseEditPage from 'shared/components/base-edit-page';
 import ClayLayout from '@clayui/layout';
-import DownloadPDFReport from 'shared/components/download-report/DownloadPDFReport';
+import ConditionsPanel from '../components/event-analysis-editor/event-analysis-builder/ConditionsPanel';
+import DownloadPDFReport, {
+	ReportContainer,
+} from 'shared/components/download-report/DownloadPDFReport';
 import EventAnalysisEditor from '../components/event-analysis-editor';
 import Form from 'shared/components/form';
 import NavigationWarning from 'shared/components/NavigationWarning';
-import React, {useContext, useMemo, useState} from 'react';
+import React, {useMemo, useState} from 'react';
 import {addAlert} from 'shared/actions/alerts';
 import {Alert, RangeSelectors} from 'shared/types';
-import {AttributesContext} from '../components/event-analysis-editor/context/attributes';
 import {
 	Breakdowns,
 	CalculationTypes,
@@ -26,6 +28,7 @@ import {getSafeRangeSelectors} from 'shared/util/util';
 import {hasChanges} from 'shared/util/react';
 import {omit} from 'lodash';
 import {Routes, toRoute} from 'shared/util/router';
+import {useAttributes} from '../components/event-analysis-editor/context/attributes';
 import {useChannelContext} from 'shared/context/channel';
 import {useCurrentUser} from 'shared/hooks/useCurrentUser';
 import {useDataSources} from 'shared/context/dataSources';
@@ -34,6 +37,7 @@ import {useField} from 'formik';
 import {useHistoryAdapter} from 'shared/hooks/useHistoryAdapter';
 import {useMutation} from '@apollo/client';
 import {useParams} from 'react-router-dom';
+import {useReportContainer} from 'shared/components/download-report/DownloadReportContext';
 
 enum MessageKeys {
 	NameCannotBeBlank = 'name-cannot-be-blank',
@@ -90,6 +94,8 @@ const BaseEventAnalysisPage: React.FC<IBaseEventAnalysisPageProps> = ({
 }) => {
 	const dispatch = useDispatch();
 
+	useReportContainer(ReportContainer.EventAnalysisPage);
+
 	const dataSourceStates = useDataSources();
 
 	const history = useHistoryAdapter();
@@ -124,7 +130,7 @@ const BaseEventAnalysisPage: React.FC<IBaseEventAnalysisPageProps> = ({
 		changed: attributesContextChanged,
 		filterOrder,
 		filters,
-	} = useContext(AttributesContext);
+	} = useAttributes();
 
 	const Mutation = eventAnalysisId
 		? UpdateEventAnalysisMutation
@@ -258,108 +264,119 @@ const BaseEventAnalysisPage: React.FC<IBaseEventAnalysisPageProps> = ({
 
 	return (
 		<BaseEditPage documentTitle={Liferay.Language.get('event-analysis')}>
-			<Form
-				initialValues={{
-					name: initialName,
-				}}
-				onSubmit={handleSubmit}
+			<div
+				className="event-analysis-page"
+				id={ReportContainer.EventAnalysisPage}
 			>
-				{({dirty, handleSubmit, isSubmitting, values: {name}}) => {
-					const hasChanges =
-						attributesContextChanged ||
-						dirty ||
-						compareToPreviousChanged ||
-						eventChanged ||
-						rangeSelectorsChanged;
+				<Form
+					initialValues={{
+						name: initialName,
+					}}
+					onSubmit={handleSubmit}
+				>
+					{({dirty, handleSubmit, isSubmitting, values: {name}}) => {
+						const hasChanges =
+							attributesContextChanged ||
+							dirty ||
+							compareToPreviousChanged ||
+							eventChanged ||
+							rangeSelectorsChanged;
 
-					const listURL = toRoute(Routes.EVENT_ANALYSIS, {
-						channelId,
-						groupId,
-					});
+						const listURL = toRoute(Routes.EVENT_ANALYSIS, {
+							channelId,
+							groupId,
+						});
 
-					return (
-						<>
-							<BaseEditPage.Toolbar
-								backURL={listURL}
-								title={
-									eventAnalysisId
-										? Liferay.Language.get(
-												'edit-event-analysis'
-											)
-										: Liferay.Language.get(
-												'new-event-analysis'
-											)
-								}
-							>
-								<BaseEditPage.Toolbar.Item>
-									<DownloadPDFReport
-										disabled={!!dataSourceStates.empty}
-										infoMessage={Liferay.Language.get(
-											'the-report-will-be-downloaded-exactly-as-it-is-displayed-on-your-screen.-please-verify-if-the-desired-tabs-and-filters-are-selected-before-proceeding'
-										)}
-										subtitle={selectedChannel?.name}
-										title={Liferay.Language.get(
-											'event-analysis-report'
-										)}
-									/>
-								</BaseEditPage.Toolbar.Item>
-
-								<BaseEditPage.Toolbar.Divider />
-
-								<BaseEditPage.Toolbar.Cancel href={listURL} />
-
-								<BaseEditPage.Toolbar.Save
-									disabled={
-										!name ||
-										!event?.id ||
-										!hasChanges ||
-										isSubmitting
+						return (
+							<>
+								<BaseEditPage.Toolbar
+									backURL={listURL}
+									title={
+										eventAnalysisId
+											? Liferay.Language.get(
+													'edit-event-analysis'
+												)
+											: Liferay.Language.get(
+													'new-event-analysis'
+												)
 									}
-									form={FORM_ID}
-									label={Liferay.Language.get(
-										'save-analysis'
-									)}
-									type="submit"
-								/>
-							</BaseEditPage.Toolbar>
-
-							<Form.Form id={FORM_ID} onSubmit={handleSubmit}>
-								<NavigationWarning
-									when={
-										!submitted &&
-										hasChanges &&
-										!isSubmitting
-									}
-								/>
-
-								<ClayLayout.ContainerFluid
-									className="pb-4 pt-4"
-									size="xl"
 								>
-									<EventAnalysisTitle />
-								</ClayLayout.ContainerFluid>
-							</Form.Form>
-						</>
-					);
-				}}
-			</Form>
+									<BaseEditPage.Toolbar.Item>
+										<DownloadPDFReport
+											disabled={!!dataSourceStates.empty}
+											infoMessage={Liferay.Language.get(
+												'the-report-will-be-downloaded-exactly-as-it-is-displayed-on-your-screen.-please-verify-if-the-desired-tabs-and-filters-are-selected-before-proceeding'
+											)}
+											subtitle={selectedChannel?.name}
+											title={Liferay.Language.get(
+												'event-analysis-report'
+											)}
+										/>
+									</BaseEditPage.Toolbar.Item>
 
-			<ClayLayout.ContainerFluid
-				className="page-container pb-4"
-				size="xl"
-			>
-				<EventAnalysisEditor
-					channelId={channelId}
-					compareToPrevious={compareToPrevious}
-					event={event!}
-					onCompareToPreviousChange={onCompareToPreviousChange}
+									<BaseEditPage.Toolbar.Divider />
+
+									<BaseEditPage.Toolbar.Cancel
+										href={listURL}
+									/>
+
+									<BaseEditPage.Toolbar.Save
+										disabled={
+											!name ||
+											!event?.id ||
+											!hasChanges ||
+											isSubmitting
+										}
+										form={FORM_ID}
+										label={Liferay.Language.get(
+											'save-analysis'
+										)}
+										type="submit"
+									/>
+								</BaseEditPage.Toolbar>
+
+								<Form.Form id={FORM_ID} onSubmit={handleSubmit}>
+									<NavigationWarning
+										when={
+											!submitted &&
+											hasChanges &&
+											!isSubmitting
+										}
+									/>
+
+									<ClayLayout.ContainerFluid
+										className="pb-4 pt-4"
+										size="xl"
+									>
+										<EventAnalysisTitle />
+									</ClayLayout.ContainerFluid>
+								</Form.Form>
+							</>
+						);
+					}}
+				</Form>
+
+				<ConditionsPanel
+					event={event ?? undefined}
 					onEventChange={onEventChange}
-					onRangeSelectorsChange={onRangeSelectorsChange}
-					onTypeChange={onTypeChange}
-					rangeSelectors={rangeSelectors!}
-					type={type}
 				/>
-			</ClayLayout.ContainerFluid>
+
+				<ClayLayout.ContainerFluid
+					className="page-container pb-4"
+					size="xl"
+				>
+					<EventAnalysisEditor
+						channelId={channelId}
+						compareToPrevious={compareToPrevious}
+						event={event!}
+						onCompareToPreviousChange={onCompareToPreviousChange}
+						onRangeSelectorsChange={onRangeSelectorsChange}
+						onTypeChange={onTypeChange}
+						rangeSelectors={rangeSelectors!}
+						type={type}
+					/>
+				</ClayLayout.ContainerFluid>
+			</div>
 		</BaseEditPage>
 	);
 };
