@@ -1,0 +1,54 @@
+name: osb-faro-web sync fork master
+
+on:
+    schedule:
+        -   cron: "0 10,16 * * *"
+    workflow_dispatch:
+
+jobs:
+    keepalive:
+        if: ${{github.event_name == 'schedule'}}
+        permissions:
+            actions: write
+        runs-on: ubuntu-latest
+        steps:
+            -   uses: liskin/gh-workflow-keepalive@v1.2.1
+    sync:
+        permissions:
+            contents: write
+        runs-on: ubuntu-latest
+        steps:
+            -   uses: actions/checkout@v4
+                with:
+                    fetch-depth: 0
+                    filter: blob:none
+                    ref: master
+            -   name: Replay the fork only commits on top of liferay/liferay-portal master
+                run: |
+                    set -euo pipefail
+
+                    git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                    git config user.name "github-actions[bot]"
+
+                    git remote add upstream https://github.com/liferay/liferay-portal.git
+                    git fetch --filter=blob:none --no-tags upstream master
+
+                    if [ "$(git merge-base master upstream/master)" = "$(git rev-parse upstream/master)" ]; then
+                    	echo "Already in sync"
+
+                    	exit 0
+                    fi
+
+                    commits=$(git log --format=%H --reverse upstream/master..master)
+
+                    git reset --hard upstream/master
+
+                    for commit in ${commits}; do
+                    	git cherry-pick "${commit}" || {
+                    		echo "::error::Cherry-pick of ${commit} failed"
+
+                    		exit 1
+                    	}
+                    done
+
+                    git push --force-with-lease origin master
