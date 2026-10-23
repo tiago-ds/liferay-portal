@@ -461,7 +461,7 @@ const List = () => {
 				</div>
 			</BasePage.SubHeader>
 
-			<BasePage.Body fluid sidebarOpened={!!infoPanelData}>
+			<BasePage.Body fluid>
 				<Card minHeight={300}>
 					<FrontendDataSet
 

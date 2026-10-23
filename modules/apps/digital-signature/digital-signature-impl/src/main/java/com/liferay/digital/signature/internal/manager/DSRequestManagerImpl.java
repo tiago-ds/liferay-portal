@@ -9,7 +9,9 @@ import com.liferay.digital.signature.configuration.DigitalSignatureConfiguration
 import com.liferay.digital.signature.configuration.DigitalSignatureConfigurationUtil;
 import com.liferay.digital.signature.constants.DSObjectDefinitionConstants;
 import com.liferay.digital.signature.constants.DSRequestConstants;
+import com.liferay.digital.signature.exception.DSEnvelopeException;
 import com.liferay.digital.signature.exception.DSRequestException;
+import com.liferay.digital.signature.manager.DSDocumentManager;
 import com.liferay.digital.signature.manager.DSEnvelopeManager;
 import com.liferay.digital.signature.manager.DSRequestManager;
 import com.liferay.digital.signature.model.DSDocument;
@@ -18,7 +20,11 @@ import com.liferay.digital.signature.model.DSRecipient;
 import com.liferay.digital.signature.model.DSRequest;
 import com.liferay.digital.signature.model.DSRequestRecipient;
 import com.liferay.digital.signature.url.DSRequestURLProvider;
+import com.liferay.document.library.kernel.model.DLFileEntry;
+import com.liferay.document.library.kernel.model.DLVersionNumberIncrease;
 import com.liferay.document.library.kernel.service.DLAppLocalService;
+import com.liferay.document.library.kernel.service.DLFileEntryLocalService;
+import com.liferay.document.library.kernel.util.DLUtil;
 import com.liferay.notification.context.NotificationContextBuilder;
 import com.liferay.notification.model.NotificationTemplate;
 import com.liferay.notification.service.NotificationTemplateLocalService;
@@ -47,6 +53,7 @@ import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.model.UserConstants;
 import com.liferay.portal.kernel.repository.model.FileEntry;
+import com.liferay.portal.kernel.repository.model.FileVersion;
 import com.liferay.portal.kernel.search.Field;
 import com.liferay.portal.kernel.search.Sort;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
@@ -59,6 +66,7 @@ import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.UserLocalService;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.Base64;
+import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.HtmlUtil;
@@ -69,6 +77,8 @@ import com.liferay.portal.kernel.util.PrefsPropsUtil;
 import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
+import com.liferay.portal.kernel.workflow.WorkflowConstants;
+import com.liferay.portal.kernel.workflow.WorkflowThreadLocal;
 
 import java.io.Serializable;
 
@@ -272,6 +282,107 @@ public class DSRequestManagerImpl implements DSRequestManager {
 	}
 
 	@Override
+	public List<DSRequest> getGroupDSRequests(
+		long companyId, long groupId, String search, int start, int end) {
+
+		if (!_isEnabled(companyId, groupId)) {
+			return new ArrayList<>();
+		}
+
+		ObjectDefinition objectDefinition =
+			_objectDefinitionLocalService.
+				fetchObjectDefinitionByExternalReferenceCode(
+					DSObjectDefinitionConstants.EXTERNAL_REFERENCE_CODE_REQUEST,
+					companyId);
+
+		if (objectDefinition == null) {
+			return new ArrayList<>();
+		}
+
+		try {
+			List<Long> dsRequestIds = _objectEntryLocalService.getPrimaryKeys(
+				new Long[] {0L}, companyId, objectDefinition.getUserId(),
+				objectDefinition.getObjectDefinitionId(),
+				_filterFactory.create(
+					"siteGroupId eq " + groupId, objectDefinition),
+				false, search, start, end,
+				new Sort[] {
+					new Sort(Field.CREATE_DATE, Sort.LONG_TYPE, true),
+					new Sort("id", Sort.LONG_TYPE, true)
+				});
+
+			if (dsRequestIds.isEmpty()) {
+				return new ArrayList<>();
+			}
+
+			Map<Long, DSRequest> dsRequests = _getDSRequests(
+				companyId, new HashSet<>(dsRequestIds));
+
+			return TransformUtil.transform(dsRequestIds, dsRequests::get);
+		}
+		catch (Exception exception) {
+			_log.error(
+				"Unable to get digital signature requests for site " + groupId,
+				exception);
+
+			return new ArrayList<>();
+		}
+	}
+
+	@Override
+	public int getGroupDSRequestsCount(
+		long companyId, long groupId, String search) {
+
+		if (!_isEnabled(companyId, groupId)) {
+			return 0;
+		}
+
+		ObjectDefinition objectDefinition =
+			_objectDefinitionLocalService.
+				fetchObjectDefinitionByExternalReferenceCode(
+					DSObjectDefinitionConstants.EXTERNAL_REFERENCE_CODE_REQUEST,
+					companyId);
+
+		if (objectDefinition == null) {
+			return 0;
+		}
+
+		try {
+			return _objectEntryLocalService.getValuesListCount(
+				new Long[] {0L}, companyId, objectDefinition.getUserId(),
+				objectDefinition.getObjectDefinitionId(),
+				_filterFactory.create(
+					"siteGroupId eq " + groupId, objectDefinition),
+				false, search);
+		}
+		catch (Exception exception) {
+			_log.error(
+				"Unable to count digital signature requests for site " +
+					groupId,
+				exception);
+
+			return 0;
+		}
+	}
+
+	@Override
+	public Map<Long, DSRequest> getLatestFileEntryDSRequests(
+		long companyId, long[] fileEntryIds) {
+
+		try {
+			return _getLatestFileEntryDSRequests(companyId, fileEntryIds);
+		}
+		catch (PortalException portalException) {
+			_log.error(
+				"Unable to get latest digital signature requests for file " +
+					"entries",
+				portalException);
+
+			return new HashMap<>();
+		}
+	}
+
+	@Override
 	public boolean hasPermission(
 			PermissionChecker permissionChecker, DSRequest dsRequest,
 			String actionId)
@@ -367,11 +478,30 @@ public class DSRequestManagerImpl implements DSRequestManager {
 	public void updateDSRequest(long dsRequestId) throws PortalException {
 		ObjectEntry objectEntry = _getDSRequestObjectEntry(dsRequestId);
 
+		if (!_isEnabled(
+				objectEntry.getCompanyId(),
+				MapUtil.getLong(objectEntry.getValues(), "siteGroupId"))) {
+
+			return;
+		}
+
+		_updateDSRequest(objectEntry);
+	}
+
+	@Override
+	public void voidDSRequest(long dsRequestId, String voidedReason)
+		throws PortalException {
+
+		ObjectEntry objectEntry = _getDSRequestObjectEntry(dsRequestId);
+
 		long companyId = objectEntry.getCompanyId();
 		long groupId = MapUtil.getLong(objectEntry.getValues(), "siteGroupId");
 
-		if (!_isEnabled(companyId, groupId) ||
-			ArrayUtil.contains(
+		if (!_isEnabled(companyId, groupId)) {
+			throw new DSRequestException.MustHaveEmbeddedViewEnabled(groupId);
+		}
+
+		if (ArrayUtil.contains(
 				DSRequestConstants.STATUSES_REQUEST_TERMINAL,
 				MapUtil.getString(objectEntry.getValues(), "requestStatus"))) {
 
@@ -379,35 +509,35 @@ public class DSRequestManagerImpl implements DSRequestManager {
 		}
 
 		try {
-			DSEnvelope dsEnvelope = _dsEnvelopeManager.getDSEnvelope(
-				companyId, groupId, objectEntry.getExternalReferenceCode());
-
-			String dsRequestStatus = _getDSRequestStatus(dsEnvelope);
-
-			_updateDSRequestRecipientStatuses(
-				companyId, dsEnvelope, dsRequestId, dsRequestStatus, groupId);
-
-			_objectEntryLocalService.partialUpdateObjectEntry(
-				objectEntry.getUserId(), dsRequestId,
-				ObjectEntryFolderConstants.
-					PARENT_OBJECT_ENTRY_FOLDER_ID_DEFAULT,
-				HashMapBuilder.<String, Serializable>put(
-					"requestExpirationDate",
-					() -> _toDate(dsEnvelope.getExpirationLocalDateTime())
-				).put(
-					"requestStatus", () -> dsRequestStatus
-				).put(
-					"requestStatusDate",
-					() -> _toDate(dsEnvelope.getStatusLocalDateTime())
-				).build(),
-				_getServiceContext(
-					companyId, groupId, objectEntry.getUserId()));
+			_dsEnvelopeManager.voidDSEnvelope(
+				companyId, objectEntry.getExternalReferenceCode(), groupId,
+				voidedReason);
 		}
-		catch (Exception exception) {
-			_log.error(
-				"Unable to update digital signature request " + dsRequestId,
-				exception);
+		catch (DSEnvelopeException.MustBeVoidable dsEnvelopeException) {
+			_updateDSRequest(objectEntry);
+
+			objectEntry = _objectEntryLocalService.getObjectEntry(dsRequestId);
+
+			String dsRequestStatus = MapUtil.getString(
+				objectEntry.getValues(), "requestStatus");
+
+			if (Objects.equals(
+					DSRequestConstants.STATUS_VOIDED, dsRequestStatus)) {
+
+				return;
+			}
+
+			if (ArrayUtil.contains(
+					DSRequestConstants.STATUSES_REQUEST_TERMINAL,
+					dsRequestStatus)) {
+
+				throw new DSRequestException.MustBeActive(dsRequestId);
+			}
+
+			throw dsEnvelopeException;
 		}
+
+		_updateDSRequest(objectEntry);
 	}
 
 	private DSRequest _addDSRequest(
@@ -858,6 +988,28 @@ public class DSRequestManagerImpl implements DSRequestManager {
 		return serviceContext;
 	}
 
+	private String _getSignedFileName(FileEntry fileEntry) {
+		if (StringUtil.equalsIgnoreCase(fileEntry.getExtension(), "pdf")) {
+			return fileEntry.getFileName();
+		}
+
+		String signedFileName =
+			FileUtil.stripExtension(fileEntry.getFileName()) + ".pdf";
+
+		DLFileEntry dlFileEntry =
+			_dlFileEntryLocalService.fetchFileEntryByFileName(
+				fileEntry.getGroupId(), fileEntry.getFolderId(),
+				signedFileName);
+
+		if (dlFileEntry == null) {
+			return signedFileName;
+		}
+
+		return DLUtil.getUniqueFileName(
+			fileEntry.getGroupId(), fileEntry.getFolderId(),
+			FileUtil.appendParentheticalSuffix(signedFileName, "signed"), true);
+	}
+
 	private long _getSiteGroupId(long groupId) {
 		Group group = _groupLocalService.fetchGroup(groupId);
 
@@ -1071,6 +1223,62 @@ public class DSRequestManagerImpl implements DSRequestManager {
 		return Date.from(localDateTime.toInstant(ZoneOffset.UTC));
 	}
 
+	private void _updateDSRequest(ObjectEntry objectEntry) {
+		if (ArrayUtil.contains(
+				DSRequestConstants.STATUSES_REQUEST_TERMINAL,
+				MapUtil.getString(objectEntry.getValues(), "requestStatus"))) {
+
+			return;
+		}
+
+		long companyId = objectEntry.getCompanyId();
+		long dsRequestId = objectEntry.getObjectEntryId();
+		long groupId = MapUtil.getLong(objectEntry.getValues(), "siteGroupId");
+
+		try {
+			DSEnvelope dsEnvelope = _dsEnvelopeManager.getDSEnvelope(
+				companyId, groupId, objectEntry.getExternalReferenceCode());
+
+			String dsRequestStatus = _getDSRequestStatus(dsEnvelope);
+
+			if (Objects.equals(
+					DSRequestConstants.STATUS_COMPLETED, dsRequestStatus) &&
+				!Objects.equals(
+					DSRequestConstants.STATUS_COMPLETED,
+					MapUtil.getString(
+						objectEntry.getValues(), "requestStatus"))) {
+
+				_updateFileEntries(
+					companyId, dsEnvelope, dsRequestId, groupId,
+					objectEntry.getUserId());
+			}
+
+			_updateDSRequestRecipientStatuses(
+				companyId, dsEnvelope, dsRequestId, dsRequestStatus, groupId);
+
+			_objectEntryLocalService.partialUpdateObjectEntry(
+				objectEntry.getUserId(), dsRequestId,
+				ObjectEntryFolderConstants.
+					PARENT_OBJECT_ENTRY_FOLDER_ID_DEFAULT,
+				HashMapBuilder.<String, Serializable>put(
+					"requestExpirationDate",
+					() -> _toDate(dsEnvelope.getExpirationLocalDateTime())
+				).put(
+					"requestStatus", () -> dsRequestStatus
+				).put(
+					"requestStatusDate",
+					() -> _toDate(dsEnvelope.getStatusLocalDateTime())
+				).build(),
+				_getServiceContext(
+					companyId, groupId, objectEntry.getUserId()));
+		}
+		catch (Exception exception) {
+			_log.error(
+				"Unable to update digital signature request " + dsRequestId,
+				exception);
+		}
+	}
+
 	private void _updateDSRequestRecipientStatuses(
 			long companyId, DSEnvelope dsEnvelope, long dsRequestId,
 			String dsRequestStatus, long groupId)
@@ -1139,6 +1347,94 @@ public class DSRequestManagerImpl implements DSRequestManager {
 		}
 	}
 
+	private void _updateFileEntries(
+			long companyId, DSEnvelope dsEnvelope, long dsRequestId,
+			long groupId, long userId)
+		throws Exception {
+
+		ObjectDefinition objectDefinition =
+			_objectDefinitionLocalService.
+				getObjectDefinitionByExternalReferenceCode(
+					DSObjectDefinitionConstants.
+						EXTERNAL_REFERENCE_CODE_REQUEST_DOCUMENT,
+					companyId);
+
+		String changeLog =
+			"Digital signature envelope " + dsEnvelope.getDSEnvelopeId();
+
+		for (Map<String, Serializable> values :
+				_getValuesList(
+					companyId,
+					"(r_dsRequestToDSRequestDocuments_l_dsRequestId eq '" +
+						dsRequestId + "')",
+					objectDefinition, null)) {
+
+			long fileEntryId = MapUtil.getLong(values, "fileEntryId");
+
+			FileEntry fileEntry = _dlAppLocalService.getFileEntry(fileEntryId);
+
+			FileVersion latestFileVersion = fileEntry.getLatestFileVersion(
+				true);
+
+			if (Objects.equals(latestFileVersion.getChangeLog(), changeLog)) {
+				continue;
+			}
+
+			byte[] bytes = _dsDocumentManager.getDSDocumentAsBytes(
+				companyId, groupId, String.valueOf(fileEntryId),
+				dsEnvelope.getDSEnvelopeId());
+
+			if ((bytes == null) || (bytes.length < 5) ||
+				!Objects.equals(new String(bytes, 0, 5), "%PDF-")) {
+
+				throw new PortalException(
+					StringBundler.concat(
+						"DocuSign did not return a signed PDF for file entry ",
+						fileEntryId, " of digital signature envelope ",
+						dsEnvelope.getDSEnvelopeId()));
+			}
+
+			String signedFileName = _getSignedFileName(fileEntry);
+
+			String title = fileEntry.getTitle();
+
+			if (Objects.equals(title, fileEntry.getFileName())) {
+				title = signedFileName;
+			}
+
+			boolean workflowEnabled = WorkflowThreadLocal.isEnabled();
+
+			try {
+				WorkflowThreadLocal.setEnabled(false);
+
+				ServiceContext serviceContext = _getServiceContext(
+					companyId, fileEntry.getGroupId(), userId);
+
+				fileEntry = _dlAppLocalService.updateFileEntry(
+					userId, fileEntryId, signedFileName,
+					ContentTypes.APPLICATION_PDF, title, null,
+					fileEntry.getDescription(), changeLog,
+					DLVersionNumberIncrease.MAJOR, bytes,
+					fileEntry.getDisplayDate(), fileEntry.getExpirationDate(),
+					fileEntry.getReviewDate(), serviceContext);
+
+				FileVersion fileVersion = fileEntry.getLatestFileVersion(true);
+
+				if (fileVersion.getStatus() !=
+						WorkflowConstants.STATUS_APPROVED) {
+
+					_dlFileEntryLocalService.updateStatus(
+						userId, fileVersion.getFileVersionId(),
+						WorkflowConstants.STATUS_APPROVED, serviceContext,
+						new HashMap<>());
+				}
+			}
+			finally {
+				WorkflowThreadLocal.setEnabled(workflowEnabled);
+			}
+		}
+	}
+
 	private static final int _IN_FILTER_MAX_SIZE = 1000;
 
 	private static final Log _log = LogFactoryUtil.getLog(
@@ -1146,6 +1442,12 @@ public class DSRequestManagerImpl implements DSRequestManager {
 
 	@Reference
 	private DLAppLocalService _dlAppLocalService;
+
+	@Reference
+	private DLFileEntryLocalService _dlFileEntryLocalService;
+
+	@Reference
+	private DSDocumentManager _dsDocumentManager;
 
 	@Reference
 	private DSEnvelopeManager _dsEnvelopeManager;
