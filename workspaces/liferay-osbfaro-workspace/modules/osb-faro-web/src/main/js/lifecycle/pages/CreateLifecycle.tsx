@@ -1,10 +1,13 @@
 import * as API from 'shared/api';
 import ErrorDisplay from 'shared/components/ErrorDisplay';
 import LifecycleSettingsForm from 'lifecycle/components/LifecycleSettingsForm';
+import LifecyclesPage from 'lifecycle/components/LifecyclesPage';
 import Loading from 'shared/components/Loading';
 import React from 'react';
 import {Routes, toRoute} from 'shared/util/router';
 import {buildCreateLifecyclePayload} from 'lifecycle/utils/lifecyclePayload';
+import {LifecycleAccountDataEmptyState} from 'lifecycle/components/LifecycleEmptyStates';
+import {useLifecycleAccountData} from 'lifecycle/hooks/useLifecycleAccountData';
 import {useLifecycleSettingsForm} from 'lifecycle/hooks/useLifecycleSettingsForm';
 import {useCurrentUser} from 'shared/hooks/useCurrentUser';
 import {useParams} from 'react-router-dom';
@@ -14,6 +17,9 @@ const CreateLifecycle = () => {
 	const {channelId, groupId} = useParams();
 
 	const currentUser = useCurrentUser();
+
+	const {refetch: refetchAccountData, status: accountDataStatus} =
+		useLifecycleAccountData();
 
 	const form = useLifecycleSettingsForm({
 		description: '',
@@ -30,6 +36,19 @@ const CreateLifecycle = () => {
 		stageConfigs,
 		submit,
 	} = form;
+
+	if (accountDataStatus !== 'ready') {
+		return (
+			<LifecyclesPage showTitle={accountDataStatus !== 'loading'}>
+				<LifecycleAccountDataEmptyState
+					authorized={currentUser.isAdmin()}
+					groupId={groupId!}
+					onReload={refetchAccountData}
+					status={accountDataStatus}
+				/>
+			</LifecyclesPage>
+		);
+	}
 
 	if (catalogLoading) {
 		return <Loading />;
