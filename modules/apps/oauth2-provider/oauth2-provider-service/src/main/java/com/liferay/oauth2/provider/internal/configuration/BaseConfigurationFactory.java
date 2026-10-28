@@ -6,32 +6,40 @@
 package com.liferay.oauth2.provider.internal.configuration;
 
 import com.liferay.oauth2.provider.model.OAuth2Application;
-import com.liferay.oauth2.provider.scope.liferay.LiferayOAuth2Scope;
 import com.liferay.oauth2.provider.scope.liferay.ScopeLocator;
 import com.liferay.oauth2.provider.service.OAuth2ApplicationLocalService;
 import com.liferay.oauth2.provider.service.OAuth2ApplicationScopeAliasesLocalService;
 import com.liferay.osgi.util.configuration.ConfigurationFactoryUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.instance.lifecycle.BasePortalInstanceLifecycleListener;
+import com.liferay.portal.instance.lifecycle.EveryNodeEveryStartup;
+import com.liferay.portal.instance.lifecycle.PortalInstanceLifecycleListener;
 import com.liferay.portal.k8s.agent.PortalK8sConfigMapModifier;
-import com.liferay.portal.kernel.dependency.manager.DependencyManagerSyncUtil;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.module.framework.ModuleServiceLifecycle;
 import com.liferay.portal.kernel.module.service.Snapshot;
-import com.liferay.portal.kernel.security.auth.CompanyInheritableThreadLocalCallable;
 import com.liferay.portal.kernel.service.CompanyLocalService;
 import com.liferay.portal.kernel.service.UserLocalService;
+import com.liferay.portal.kernel.transaction.Propagation;
+import com.liferay.portal.kernel.transaction.TransactionConfig;
+import com.liferay.portal.kernel.transaction.TransactionInvokerUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.Http;
 import com.liferay.portal.kernel.util.Validator;
 
-import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.component.ComponentConstants;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Deactivate;
@@ -44,33 +52,30 @@ import org.osgi.service.component.annotations.Reference;
 public abstract class BaseConfigurationFactory {
 
 	@Activate
-	protected void activate(Map<String, Object> properties) throws Exception {
+	protected void activate(
+			BundleContext bundleContext, Map<String, Object> properties)
+		throws Exception {
+
 		Log log = getLog();
 
 		if (log.isDebugEnabled()) {
 			log.debug("Activate " + properties);
 		}
 
-		DependencyManagerSyncUtil.registerSyncCallable(
-			new CompanyInheritableThreadLocalCallable<>(
-				() -> {
-					ConfigurationFactoryUtil.executeAsCompany(
-						companyLocalService, properties,
-						companyId -> {
-							String externalReferenceCode =
-								ConfigurationFactoryUtil.
-									getExternalReferenceCode(properties);
+		_bundleContext = bundleContext;
+		_properties = properties;
 
-							doActivate(
-								properties, companyId, externalReferenceCode);
-						});
-
-					return null;
-				}));
+		_apply();
 	}
 
 	@Deactivate
 	protected void deactivate(Integer reason) throws PortalException {
+		scopeLocator.stopWaitingForScopeAliases(_runnable);
+
+		if (_serviceRegistration != null) {
+			_serviceRegistration.unregister();
+		}
+
 		if ((oAuth2Application == null) ||
 			(reason !=
 				ComponentConstants.DEACTIVATION_REASON_CONFIGURATION_DELETED)) {
@@ -250,16 +255,26 @@ public abstract class BaseConfigurationFactory {
 	}
 
 	protected void updateScopes(
+			List<String> currentScopeAliasesList,
 			OAuth2Application oAuth2Application, List<String> scopeAliasesList)
 		throws Exception {
 
-		if (_hasUpToDateScopeAliases(oAuth2Application, scopeAliasesList)) {
-			return;
+		Set<String> scopeAliases = new HashSet<>(scopeAliasesList);
+
+		scopeAliases.removeAll(currentScopeAliasesList);
+
+		Set<String> resolvedScopeAliases = Collections.emptySet();
+
+		if (!scopeAliases.isEmpty()) {
+			resolvedScopeAliases = scopeLocator.waitForScopeAliases(
+				oAuth2Application.getCompanyId(), scopeAliases, _runnable);
 		}
 
-		// Make sure all scopes are registered
+		if (scopeAliasesList.containsAll(currentScopeAliasesList) &&
+			resolvedScopeAliases.isEmpty()) {
 
-		scopeLocator.getLiferayOAuth2Scopes(oAuth2Application.getCompanyId());
+			return;
+		}
 
 		oAuth2ApplicationLocalService.updateScopeAliases(
 			oAuth2Application.getUserId(), oAuth2Application.getUserName(),
@@ -287,32 +302,67 @@ public abstract class BaseConfigurationFactory {
 	@Reference
 	protected UserLocalService userLocalService;
 
-	private boolean _hasUpToDateScopeAliases(
-		OAuth2Application oAuth2Application, List<String> scopeAliasesList) {
+	private void _apply() {
+		try {
+			ConfigurationFactoryUtil.executeAsCompany(
+				companyLocalService, _properties,
+				companyId -> {
+					String externalReferenceCode =
+						ConfigurationFactoryUtil.getExternalReferenceCode(
+							_properties);
 
-		List<String> currentScopeAliasesList =
-			oAuth2ApplicationScopeAliasesLocalService.getScopeAliasesList(
-				oAuth2Application.getOAuth2ApplicationScopeAliasesId());
-
-		if (!scopeAliasesList.containsAll(currentScopeAliasesList)) {
-			return false;
+					doActivate(_properties, companyId, externalReferenceCode);
+				});
 		}
+		catch (Exception exception) {
+			String webId = GetterUtil.getString(
+				_properties.get("dxp.lxc.liferay.com.virtualInstanceId"));
 
-		for (String scopeAlias : scopeAliasesList) {
-			if (currentScopeAliasesList.contains(scopeAlias)) {
-				continue;
+			if (Validator.isNotNull(webId) && !webId.equals("default") &&
+				(_getCompanyByWebId(webId) == null)) {
+
+				_registerPortalInstanceLifecycleListener();
+
+				return;
 			}
 
-			Collection<LiferayOAuth2Scope> liferayOAuth2Scopes =
-				scopeLocator.getLiferayOAuth2Scopes(
-					oAuth2Application.getCompanyId(), scopeAlias);
+			Log log = getLog();
 
-			if (!liferayOAuth2Scopes.isEmpty()) {
-				return false;
+			log.error(exception);
+		}
+	}
+
+	private Company _getCompanyByWebId(String webId) {
+		try {
+			return companyLocalService.getCompanyByWebId(webId);
+		}
+		catch (PortalException portalException) {
+			Log log = getLog();
+
+			if (log.isDebugEnabled()) {
+				log.debug(portalException);
 			}
 		}
 
-		return true;
+		return null;
+	}
+
+	private void _registerPortalInstanceLifecycleListener() {
+		if (_serviceRegistration != null) {
+			return;
+		}
+
+		Log log = getLog();
+
+		if (log.isInfoEnabled()) {
+			log.info(
+				"Waiting for virtual instance " +
+					_properties.get("dxp.lxc.liferay.com.virtualInstanceId"));
+		}
+
+		_serviceRegistration = _bundleContext.registerService(
+			PortalInstanceLifecycleListener.class,
+			new VirtualInstancePortalInstanceLifecycleListener(), null);
 	}
 
 	private static final Snapshot<PortalK8sConfigMapModifier>
@@ -320,9 +370,49 @@ public abstract class BaseConfigurationFactory {
 			BaseConfigurationFactory.class, PortalK8sConfigMapModifier.class,
 			null, true);
 
+	private BundleContext _bundleContext;
 	private volatile String _configMapName;
 	private volatile Map<String, String> _extensionProperties;
 	private volatile String _projectName;
+	private Map<String, Object> _properties;
+
+	private final Runnable _runnable = () -> {
+		try {
+			TransactionInvokerUtil.invoke(
+				TransactionConfig.Factory.create(
+					Propagation.NOT_SUPPORTED,
+					new Class<?>[] {Exception.class}),
+				() -> {
+					_apply();
+
+					return null;
+				});
+		}
+		catch (Throwable throwable) {
+			throw new RuntimeException(throwable);
+		}
+	};
+
+	private volatile ServiceRegistration<PortalInstanceLifecycleListener>
+		_serviceRegistration;
 	private volatile String _virtualInstanceId;
+
+	private class VirtualInstancePortalInstanceLifecycleListener
+		extends BasePortalInstanceLifecycleListener
+		implements EveryNodeEveryStartup {
+
+		@Override
+		public void portalInstanceRegistered(Company company) {
+			if (!Objects.equals(
+					company.getWebId(),
+					_properties.get("dxp.lxc.liferay.com.virtualInstanceId"))) {
+
+				return;
+			}
+
+			_runnable.run();
+		}
+
+	}
 
 }

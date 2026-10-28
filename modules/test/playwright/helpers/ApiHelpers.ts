@@ -63,6 +63,7 @@ import {JSONWebServicesAnnouncementsEntryApiHelper} from './json-web-services/JS
 import {JSONWebServicesAssetDisplayPageEntryApiHelper} from './json-web-services/JSONWebServicesAssetDisplayPageEntryApiHelper';
 import {JSONWebServicesAssetListEntryApiHelper} from './json-web-services/JSONWebServicesAssetListEntryApiHelper';
 import {JSONWebServicesAudiencesEntryApiHelper} from './json-web-services/JSONWebServicesAudiencesEntryApiHelper';
+import {JSONWebServicesBlogsApiHelper} from './json-web-services/JSONWebServicesBlogsApiHelper';
 import {JSONWebServicesCalendarApiHelper} from './json-web-services/JSONWebServicesCalendarApiHelper';
 import {JSONWebServicesCalendarResourceApiHelper} from './json-web-services/JSONWebServicesCalendarResourceApiHelper';
 import {JSONWebServicesClassNameApiHelper} from './json-web-services/JSONWebServicesClassNameApiHelper';
@@ -76,6 +77,7 @@ import {JSONWebServicesFragmentCollectionApiHelper} from './json-web-services/JS
 import {JSONWebServicesFragmentEntryApiHelper} from './json-web-services/JSONWebServicesFragmentEntryApiHelper';
 import {JSONWebServicesGroupApiHelper} from './json-web-services/JSONWebServicesGroupApiHelper';
 import {JSONWebServicesJournalApiHelper} from './json-web-services/JSONWebServicesJournalApiHelper';
+import {JSONWebServicesKnowledgeBaseApiHelper} from './json-web-services/JSONWebServicesKnowledgeBaseApiHelper';
 import {JSONWebServicesLayoutApiHelper} from './json-web-services/JSONWebServicesLayoutApiHelper';
 import {JSONWebServicesLayoutPageTemplateCollectionApiHelper} from './json-web-services/JSONWebServicesLayoutPageTemplateCollection';
 import {JSONWebServicesLayoutPageTemplateEntryApiHelper} from './json-web-services/JSONWebServicesLayoutPageTemplateEntry';
@@ -151,6 +153,7 @@ export class ApiHelpers {
 	readonly jsonWebServicesAssetDisplayPageEntry: JSONWebServicesAssetDisplayPageEntryApiHelper;
 	readonly jsonWebServicesAssetListEntry: JSONWebServicesAssetListEntryApiHelper;
 	readonly jsonWebServicesAudiencesEntry: JSONWebServicesAudiencesEntryApiHelper;
+	readonly jsonWebServicesBlogs: JSONWebServicesBlogsApiHelper;
 	readonly jsonWebServicesCalendar: JSONWebServicesCalendarApiHelper;
 	readonly jsonWebServicesCalendarResource: JSONWebServicesCalendarResourceApiHelper;
 	readonly jsonWebServicesClassName: JSONWebServicesClassNameApiHelper;
@@ -164,6 +167,7 @@ export class ApiHelpers {
 	readonly jsonWebServicesFragmentCollection: JSONWebServicesFragmentCollectionApiHelper;
 	readonly jsonWebServicesGroup: JSONWebServicesGroupApiHelper;
 	readonly jsonWebServicesJournal: JSONWebServicesJournalApiHelper;
+	readonly jsonWebServicesKnowledgeBase: JSONWebServicesKnowledgeBaseApiHelper;
 	readonly jsonWebServicesLayout: JSONWebServicesLayoutApiHelper;
 	readonly jsonWebServicesLayoutPageTemplateEntry: JSONWebServicesLayoutPageTemplateEntryApiHelper;
 	readonly jsonWebServicesLayoutPageTemplateCollection: JSONWebServicesLayoutPageTemplateCollectionApiHelper;
@@ -255,6 +259,7 @@ export class ApiHelpers {
 			new JSONWebServicesAssetListEntryApiHelper(this);
 		this.jsonWebServicesAudiencesEntry =
 			new JSONWebServicesAudiencesEntryApiHelper(this);
+		this.jsonWebServicesBlogs = new JSONWebServicesBlogsApiHelper(this);
 		this.jsonWebServicesCalendar = new JSONWebServicesCalendarApiHelper(
 			this
 		);
@@ -278,6 +283,8 @@ export class ApiHelpers {
 			new JSONWebServicesFragmentCollectionApiHelper(this);
 		this.jsonWebServicesGroup = new JSONWebServicesGroupApiHelper(this);
 		this.jsonWebServicesJournal = new JSONWebServicesJournalApiHelper(this);
+		this.jsonWebServicesKnowledgeBase =
+			new JSONWebServicesKnowledgeBaseApiHelper(this);
 		this.jsonWebServicesLayout = new JSONWebServicesLayoutApiHelper(this);
 		this.jsonWebServicesLayoutPageTemplateEntry =
 			new JSONWebServicesLayoutPageTemplateEntryApiHelper(this);
@@ -662,6 +669,9 @@ export class DataApiHelpers extends ApiHelpers {
 						item.id
 					);
 				}
+				else if (item.type === 'objectEntryFolder') {
+					await this.objectFolder.deleteObjectEntryFolder(item.id);
+				}
 				else if (item.type === 'objectFolder') {
 					const objectFolderRESTClient =
 						await this.buildRestClient(ObjectFolderAPI);
@@ -798,6 +808,11 @@ export class DataApiHelpers extends ApiHelpers {
 				}
 				else if (item.type === 'sxpElement') {
 					await this.searchExperiences.deleteSXPElement(item.id);
+				}
+				else if (item.type === 'taxonomyCategory') {
+					await this.headlessAdminTaxonomy.deleteTaxonomyCategory(
+						item.id
+					);
 				}
 				else if (item.type === 'taxonomyVocabulary') {
 					await this.headlessAdminTaxonomy.deleteTaxonomyVocabulary(

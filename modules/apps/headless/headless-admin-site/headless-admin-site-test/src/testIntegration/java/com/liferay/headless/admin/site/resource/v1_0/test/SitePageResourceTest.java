@@ -92,6 +92,7 @@ import com.liferay.layout.content.service.LayoutContentVersionLocalService;
 import com.liferay.layout.manager.LayoutLockManager;
 import com.liferay.layout.page.template.model.LayoutPageTemplateEntry;
 import com.liferay.layout.provider.LayoutStructureProvider;
+import com.liferay.layout.seo.service.LayoutSEOEntryLocalService;
 import com.liferay.layout.test.util.ContentLayoutTestUtil;
 import com.liferay.layout.test.util.LayoutFriendlyURLRandomizerBumper;
 import com.liferay.layout.test.util.LayoutTestUtil;
@@ -275,7 +276,7 @@ public class SitePageResourceTest extends BaseSitePageResourceTestCase {
 
 	@Override
 	@Test
-	@TestInfo({"LPD-78718", "LPD-101791"})
+	@TestInfo({"LPD-78718", "LPD-101791", "LPD-110512"})
 	public void testGetSiteSitePage() throws Exception {
 		SitePage postSitePage = testGetSiteSitePagesPage_addSitePage(
 			testGroup.getExternalReferenceCode(), randomSitePage());
@@ -324,6 +325,7 @@ public class SitePageResourceTest extends BaseSitePageResourceTestCase {
 					RandomTestUtil.randomString()
 				).buildString()));
 
+		_testGetSiteSitePageWithDeletedOpenGraphImage(serviceContext);
 		_testGetSiteSitePageWithWidgetPageTypeWithWidgetPageWidgetInstances();
 	}
 
@@ -2608,6 +2610,72 @@ public class SitePageResourceTest extends BaseSitePageResourceTestCase {
 			_assertExternalReferenceCodes(
 				Collections.singletonList(viewableLayout), page);
 		}
+	}
+
+	private void _testGetSiteSitePageWithDeletedOpenGraphImage(
+			Layout layout, String openGraphImageFileEntryERC,
+			String openGraphImageFileEntryScopeERC,
+			ServiceContext serviceContext)
+		throws Exception {
+
+		_layoutSEOEntryLocalService.updateLayoutSEOEntry(
+			TestPropsValues.getUserId(), testGroup.getGroupId(), false,
+			layout.getLayoutId(), false, Collections.emptyMap(),
+			Collections.emptyMap(), openGraphImageFileEntryERC,
+			openGraphImageFileEntryScopeERC, true,
+			HashMapBuilder.put(
+				LocaleUtil.US, RandomTestUtil.randomString()
+			).build(),
+			serviceContext);
+
+		SitePage sitePage = sitePageResource.getSiteSitePage(
+			testGroup.getExternalReferenceCode(),
+			layout.getExternalReferenceCode());
+
+		ContentPageSettings contentPageSettings =
+			(ContentPageSettings)sitePage.getPageSettings();
+
+		OpenGraphSettings openGraphSettings =
+			contentPageSettings.getOpenGraphSettings();
+
+		ItemExternalReference itemExternalReference =
+			openGraphSettings.getImage();
+
+		Assert.assertEquals(
+			FileEntry.class.getName(), itemExternalReference.getClassName());
+		Assert.assertEquals(
+			openGraphImageFileEntryERC,
+			itemExternalReference.getExternalReferenceCode());
+
+		Scope scope = itemExternalReference.getScope();
+
+		if (openGraphImageFileEntryScopeERC == null) {
+			Assert.assertNull(scope);
+		}
+		else {
+			Assert.assertEquals(
+				openGraphImageFileEntryScopeERC,
+				scope.getExternalReferenceCode());
+			Assert.assertEquals(Scope.Type.SITE, scope.getType());
+		}
+
+		Assert.assertNotNull(openGraphSettings.getTitle_i18n());
+	}
+
+	private void _testGetSiteSitePageWithDeletedOpenGraphImage(
+			ServiceContext serviceContext)
+		throws Exception {
+
+		Layout layout = _addLayout(
+			LayoutConstants.TYPE_CONTENT, null, serviceContext);
+
+		String openGraphImageFileEntryERC = RandomTestUtil.randomString();
+
+		_testGetSiteSitePageWithDeletedOpenGraphImage(
+			layout, openGraphImageFileEntryERC, RandomTestUtil.randomString(),
+			serviceContext);
+		_testGetSiteSitePageWithDeletedOpenGraphImage(
+			layout, openGraphImageFileEntryERC, null, serviceContext);
 	}
 
 	private void _testGetSiteSitePageWithNestedFields(SitePage sitePage)
@@ -5680,6 +5748,9 @@ public class SitePageResourceTest extends BaseSitePageResourceTestCase {
 
 	@Inject
 	private LayoutLockManager _layoutLockManager;
+
+	@Inject
+	private LayoutSEOEntryLocalService _layoutSEOEntryLocalService;
 
 	@Inject
 	private LayoutStructureProvider _layoutStructureProvider;

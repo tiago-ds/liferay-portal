@@ -2056,15 +2056,9 @@ jdbc.default.connectionProperties=oracle.jdbc.ReadTimeout=0;oracle.net.CONNECT_T
 
 					Properties gradleProperties = JenkinsResultsParserUtil.getProperties(new File[] {new File("@{workspace.dir}", "gradle.properties")});
 
-					String product = JenkinsResultsParserUtil.getProperty(gradleProperties, "liferay.workspace.product");
+					String workspaceBundleURL = JenkinsResultsParserUtil.getProperty(gradleProperties, "liferay.workspace.bundle.url");
 
-					if (JenkinsResultsParserUtil.isNullOrEmpty(product)) {
-						String workspaceBundleURL = JenkinsResultsParserUtil.getProperty(gradleProperties, "liferay.workspace.bundle.url");
-
-						if (JenkinsResultsParserUtil.isNullOrEmpty(workspaceBundleURL)) {
-							return;
-						}
-
+					if (!JenkinsResultsParserUtil.isNullOrEmpty(workspaceBundleURL)) {
 						File bundleFile = new File(mirrorDirName, workspaceBundleURL.replaceFirst("^https?://[^/]+/", ""));
 
 						if (bundleFile.exists()) {
@@ -2078,6 +2072,12 @@ jdbc.default.connectionProperties=oracle.jdbc.ReadTimeout=0;oracle.net.CONNECT_T
 							System.out.println("Using the workspace bundle at " + workspaceBundleURL);
 						}
 
+						return;
+					}
+
+					String product = JenkinsResultsParserUtil.getProperty(gradleProperties, "liferay.workspace.product");
+
+					if (JenkinsResultsParserUtil.isNullOrEmpty(product)) {
 						return;
 					}
 
@@ -4059,6 +4059,36 @@ tell application "Safari" to quit
 							<echo append="true" file="${test.ext.properties.file}">
 								browser.chrome.bin.file=${browser.chrome.bin.file}
 							</echo>
+						</then>
+					</if>
+
+					<get-testcase-property property.name="test.liferay.virtual.instance" />
+
+					<if>
+						<equals arg1="${test.liferay.virtual.instance}" arg2="true" />
+						<then>
+							<propertyregex
+								input="${test.url}"
+								override="true"
+								property="test.url.origin"
+								regexp="(https?:\/\/[^\/]+)"
+								select="\1"
+							/>
+
+							<if>
+								<isset property="test.url.origin" />
+								<then>
+									<if>
+										<isset property="browser.chrome.bin.args" />
+										<then>
+											<var name="browser.chrome.bin.args" value="${browser.chrome.bin.args} --unsafely-treat-insecure-origin-as-secure=${test.url.origin}" />
+										</then>
+										<else>
+											<var name="browser.chrome.bin.args" value="--unsafely-treat-insecure-origin-as-secure=${test.url.origin}" />
+										</else>
+									</if>
+								</then>
+							</if>
 						</then>
 					</if>
 				</then>
@@ -14183,6 +14213,7 @@ enterprise.product.enterprise.search.enabled=false</echo>
 		</antcall>
 
 		<prepare-selenium-login-config />
+		<prepare-selenium-required-properties />
 
 		<prepare-selenium-analytics-cloud-properties />
 		<prepare-selenium-app-server-properties />
@@ -14200,7 +14231,6 @@ enterprise.product.enterprise.search.enabled=false</echo>
 		<prepare-selenium-onedrive-properties />
 		<prepare-selenium-openid-properties />
 		<prepare-selenium-recaptcha-properties />
-		<prepare-selenium-required-properties />
 		<prepare-selenium-sharepoint-properties />
 		<prepare-selenium-script-management-config />
 		<prepare-selenium-site-initializer-raylife-d2c-paypal-properties />

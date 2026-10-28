@@ -44,25 +44,6 @@ const test = mergeTests(
 	structureBuilderPagesTest
 );
 
-interface IPostedObjectEntry {
-	applicationName: string;
-	id: string;
-}
-
-const postedObjectEntries: Array<IPostedObjectEntry> = [];
-
-test.afterEach(async ({apiHelpers}) => {
-	await test.step('Delete newly created object entries', async () => {
-		for (const postedObjectEntry of postedObjectEntries) {
-			const {applicationName, id} = postedObjectEntry;
-
-			await apiHelpers.objectEntry.deleteObjectEntry(applicationName, id);
-		}
-
-		postedObjectEntries.length = 0;
-	});
-});
-
 test(
 	'Friendly URL is taken into account when creating contents',
 	{tag: '@LPD-54566'},
@@ -183,16 +164,12 @@ test(
 
 		// Create a space with Spanish as the only language and default language
 
-		const spaceName = `Space ${getRandomString()}`;
-
-		await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
+		const space = await apiHelpers.headlessAssetLibrary.createSpace({
 			settings: {
 				availableLanguageIds: ['es_ES'],
 				defaultLanguageId: 'es_ES',
 				useCustomLanguages: true,
 			},
-			type: 'Space',
 		});
 
 		// Create a Blog in the space and save it
@@ -201,7 +178,7 @@ test(
 
 		await contentsPage.goto();
 
-		await contentsPage.createContent('Blog', spaceName);
+		await contentsPage.createContent('Blog', space.name);
 
 		await page.getByPlaceholder('New Blog').fill(blogTitle);
 
@@ -963,10 +940,8 @@ test.describe('Categorization Panel', () => {
 			const spaceName = getRandomString();
 
 			const {id: spaceId} =
-				await apiHelpers.headlessAssetLibrary.createAssetLibrary({
+				await apiHelpers.headlessAssetLibrary.createSpace({
 					name: spaceName,
-					settings: {},
-					type: 'Space',
 				});
 
 			// Create tags
@@ -2132,7 +2107,7 @@ test(
 		const fileNames = [...allowedFileNames, `${filePrefix}.pdf`];
 
 		for (const fileName of fileNames) {
-			const objectEntry = await apiHelpers.objectEntry.postObjectEntry(
+			await apiHelpers.objectEntry.postObjectEntry(
 				{
 					file: {
 						fileBase64: validImageFileBase64,
@@ -2144,11 +2119,6 @@ test(
 				applicationName,
 				'Default'
 			);
-
-			postedObjectEntries.push({
-				applicationName,
-				id: String(objectEntry.id),
-			});
 		}
 
 		await contentsPage.goto();
@@ -2230,7 +2200,7 @@ test(
 
 		const fileName = `sample-${getRandomString()}.mp4`;
 
-		const objectEntry = await apiHelpers.objectEntry.postObjectEntry(
+		await apiHelpers.objectEntry.postObjectEntry(
 			{
 				file: {
 					fileBase64: videoFileBase64,
@@ -2242,11 +2212,6 @@ test(
 			applicationName,
 			'Default'
 		);
-
-		postedObjectEntries.push({
-			applicationName,
-			id: String(objectEntry.id),
-		});
 
 		await contentsPage.goto();
 

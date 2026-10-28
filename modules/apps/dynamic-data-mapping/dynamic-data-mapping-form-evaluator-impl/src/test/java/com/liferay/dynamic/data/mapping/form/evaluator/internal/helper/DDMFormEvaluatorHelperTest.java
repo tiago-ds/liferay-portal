@@ -1085,6 +1085,74 @@ public class DDMFormEvaluatorHelperTest {
 	}
 
 	@Test
+	@TestInfo("LPD-110314")
+	public void testShowHideWithCalculateRule() throws Exception {
+		DDMForm ddmForm = new DDMForm();
+
+		ddmForm.addDDMFormField(
+			_createDDMFormField("numeric", "numeric", FieldConstants.DOUBLE));
+		ddmForm.addDDMFormField(
+			_createDDMFormField("text1", "text", FieldConstants.STRING));
+		ddmForm.addDDMFormField(
+			_createDDMFormField("text2", "text", FieldConstants.STRING));
+		ddmForm.addDDMFormRule(
+			new DDMFormRule(
+				List.of("setVisible('text1', true)"),
+				"getValue(\"numeric\") < 60"));
+		ddmForm.addDDMFormRule(
+			new DDMFormRule(
+				List.of("setVisible('text2', true)"),
+				"getValue(\"numeric\") >= 60"));
+		ddmForm.addDDMFormRule(
+			new DDMFormRule(List.of("calculate(\"numeric\", 70)"), "TRUE"));
+
+		DDMFormValues ddmFormValues = DDMFormValuesTestUtil.createDDMFormValues(
+			ddmForm);
+
+		String instanceId1 = RandomTestUtil.randomString();
+
+		ddmFormValues.addDDMFormFieldValue(
+			DDMFormValuesTestUtil.createDDMFormFieldValue(
+				instanceId1, "numeric", new UnlocalizedValue("40")));
+
+		String instanceId2 = RandomTestUtil.randomString();
+
+		ddmFormValues.addDDMFormFieldValue(
+			DDMFormValuesTestUtil.createDDMFormFieldValue(
+				instanceId2, "text1", new UnlocalizedValue("")));
+
+		String instanceId3 = RandomTestUtil.randomString();
+
+		ddmFormValues.addDDMFormFieldValue(
+			DDMFormValuesTestUtil.createDDMFormFieldValue(
+				instanceId3, "text2", new UnlocalizedValue("")));
+
+		DDMFormEvaluatorEvaluateResponse ddmFormEvaluatorEvaluateResponse =
+			evaluate(ddmForm, ddmFormValues);
+
+		Map<String, Object> ddmFormFieldsPropertyChanges =
+			_getDDMFormFieldPropertyChangesByKey(
+				ddmFormEvaluatorEvaluateResponse,
+				new DDMFormEvaluatorFieldContextKey("numeric", instanceId1));
+
+		Assert.assertEquals(
+			BigDecimal.valueOf(70), ddmFormFieldsPropertyChanges.get("value"));
+
+		ddmFormFieldsPropertyChanges = _getDDMFormFieldPropertyChangesByKey(
+			ddmFormEvaluatorEvaluateResponse,
+			new DDMFormEvaluatorFieldContextKey("text1", instanceId2));
+
+		Assert.assertFalse(
+			(boolean)ddmFormFieldsPropertyChanges.get("visible"));
+
+		ddmFormFieldsPropertyChanges = _getDDMFormFieldPropertyChangesByKey(
+			ddmFormEvaluatorEvaluateResponse,
+			new DDMFormEvaluatorFieldContextKey("text2", instanceId3));
+
+		Assert.assertTrue((boolean)ddmFormFieldsPropertyChanges.get("visible"));
+	}
+
+	@Test
 	public void testSumValuesForRepeatableField() throws Exception {
 		DDMForm ddmForm = DDMFormTestUtil.createDDMForm();
 

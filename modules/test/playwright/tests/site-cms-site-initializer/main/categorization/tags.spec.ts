@@ -548,64 +548,51 @@ test(
 	async ({apiHelpers, assetsPage, infoPanelPage, page}) => {
 		const applicationName = 'cms/basic-web-contents';
 		const contentTitle = `title ${getRandomString()}`;
-		let objectEntry: ObjectEntry;
 		const tagNameBase = getRandomString().substring(0, 7);
 		const tagName1 = `A${tagNameBase}`;
 		const tagName2 = `a${tagNameBase}`;
 
-		try {
-			objectEntry = await apiHelpers.objectEntry.postObjectEntry(
-				{
-					objectEntryFolderExternalReferenceCode: 'L_CONTENTS',
-					title: contentTitle,
-				},
-				applicationName,
-				'Default'
-			);
+		await apiHelpers.objectEntry.postObjectEntry(
+			{
+				objectEntryFolderExternalReferenceCode: 'L_CONTENTS',
+				title: contentTitle,
+			},
+			applicationName,
+			'Default'
+		);
 
-			await assetsPage.gotoAll();
+		await assetsPage.gotoAll();
 
-			await assetsPage.execItemAction({
-				action: 'Show Details',
-				filter: contentTitle,
-			});
+		await assetsPage.execItemAction({
+			action: 'Show Details',
+			filter: contentTitle,
+		});
 
-			await expect(
-				page.getByRole('heading', {name: contentTitle})
-			).toBeVisible();
+		await expect(
+			page.getByRole('heading', {name: contentTitle})
+		).toBeVisible();
 
-			await infoPanelPage.selectTab('Categorization').click();
+		await infoPanelPage.selectTab('Categorization').click();
 
-			await page.getByPlaceholder('Add tag').fill(tagName1);
+		await page.getByPlaceholder('Add tag').fill(tagName1);
 
-			const newTagOption = page.getByRole('option', {
-				name: 'Create New Tag:',
-			});
+		const newTagOption = page.getByRole('option', {
+			name: 'Create New Tag:',
+		});
+
+		await newTagOption.waitFor();
+		await newTagOption.click();
+
+		await expect(page.getByText(tagName1, {exact: true})).toBeVisible();
+
+		await expect(async () => {
+			await page.getByPlaceholder('Add tag').fill(tagName2);
 
 			await newTagOption.waitFor();
 			await newTagOption.click();
 
-			await expect(page.getByText(tagName1, {exact: true})).toBeVisible();
-
-			await expect(async () => {
-				await page.getByPlaceholder('Add tag').fill(tagName2);
-
-				await newTagOption.waitFor();
-				await newTagOption.click();
-
-				await expect(
-					page.getByText(tagName2, {exact: true})
-				).toBeVisible();
-			}).toPass({timeout: 5000});
-		}
-		finally {
-			if (objectEntry) {
-				await apiHelpers.objectEntry.deleteObjectEntry(
-					applicationName,
-					String(objectEntry.id)
-				);
-			}
-		}
+			await expect(page.getByText(tagName2, {exact: true})).toBeVisible();
+		}).toPass({timeout: 5000});
 	}
 );
 
@@ -618,18 +605,10 @@ test(
 
 		// Create two Spaces, with one tag scoped to each one
 
-		const spaceName = getRandomString();
-
-		const space = await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-			name: spaceName,
-			type: 'Space',
-		});
+		const space = await apiHelpers.headlessAssetLibrary.createSpace();
 
 		const anotherSpace =
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
-				name: getRandomString(),
-				type: 'Space',
-			});
+			await apiHelpers.headlessAssetLibrary.createSpace();
 
 		const tagName = getRandomString();
 
@@ -662,7 +641,7 @@ test(
 
 		await applyFDSSelectionFilter(page, {
 			filter: 'Space',
-			value: spaceName,
+			value: space.name,
 		});
 
 		await expect(tagsPage.getItem(tagName)).toBeVisible();
@@ -816,9 +795,8 @@ cmpProjectScopeTest(
 		});
 
 		await cmpProjectScopeTest.step('Create a space', async () => {
-			await apiHelpers.headlessAssetLibrary.createAssetLibrary({
+			await apiHelpers.headlessAssetLibrary.createSpace({
 				name: spaceName,
-				type: 'Space',
 			});
 		});
 

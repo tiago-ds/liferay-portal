@@ -5186,15 +5186,13 @@ public class ObjectEntryLocalServiceTest {
 		List<SystemEvent> systemEvents =
 			_systemEventLocalService.getSystemEvents(
 				0, _portal.getClassNameId(objectEntry1.getModelClassName()),
-				objectEntry1.getPrimaryKey());
+				objectEntry1.getPrimaryKey(), SystemEventConstants.TYPE_DELETE);
 
 		SystemEvent systemEvent = systemEvents.get(0);
 
 		Assert.assertEquals(
 			objectEntry1.getExternalReferenceCode(),
 			systemEvent.getClassExternalReferenceCode());
-		Assert.assertEquals(
-			SystemEventConstants.TYPE_DELETE, systemEvent.getType());
 
 		AssertUtils.assertFailure(
 			NoSuchObjectEntryException.class,
@@ -5444,15 +5442,13 @@ public class ObjectEntryLocalServiceTest {
 		List<SystemEvent> systemEvents =
 			_systemEventLocalService.getSystemEvents(
 				0, _portal.getClassNameId(objectEntry1.getModelClassName()),
-				objectEntry1.getPrimaryKey());
+				objectEntry1.getPrimaryKey(), SystemEventConstants.TYPE_DELETE);
 
 		SystemEvent systemEvent = systemEvents.get(0);
 
 		Assert.assertEquals(
 			objectEntry1.getExternalReferenceCode(),
 			systemEvent.getClassExternalReferenceCode());
-		Assert.assertEquals(
-			SystemEventConstants.TYPE_DELETE, systemEvent.getType());
 	}
 
 	@Test
@@ -6446,6 +6442,45 @@ public class ObjectEntryLocalServiceTest {
 		LocaleThreadLocal.setThemeDisplayLocale(themeDisplayLocale);
 
 		_objectDefinitionLocalService.deleteObjectDefinition(objectDefinition);
+	}
+
+	@Test
+	public void testGetSystemModelAttributes() throws Exception {
+
+		// Localized value from the DTO
+
+		CommerceCatalog commerceCatalog = CPTestUtil.getSystemCommerceCatalog(
+			TestPropsValues.getCompanyId());
+
+		CPDefinition cpDefinition = CPTestUtil.addCPDefinition(
+			commerceCatalog.getGroupId());
+
+		Map<String, Object> systemModelAttributes =
+			_objectEntryLocalService.getSystemModelAttributes(
+				_objectDefinitionLocalService.fetchObjectDefinitionByClassName(
+					TestPropsValues.getCompanyId(),
+					CPDefinition.class.getName()),
+				cpDefinition.getCProductId());
+
+		Assert.assertEquals(
+			cpDefinition.getName(), systemModelAttributes.get("name"));
+
+		_cpDefinitionLocalService.deleteCPDefinition(cpDefinition);
+
+		// Unlocalized values from the DTO and the model
+
+		User user = UserTestUtil.addUser();
+
+		systemModelAttributes =
+			_objectEntryLocalService.getSystemModelAttributes(
+				_objectDefinitionLocalService.fetchObjectDefinitionByClassName(
+					TestPropsValues.getCompanyId(), User.class.getName()),
+				user.getUserId());
+
+		Assert.assertEquals(
+			user.getFullName(), systemModelAttributes.get("name"));
+		Assert.assertEquals(
+			user.getStatus(), systemModelAttributes.get("status"));
 	}
 
 	@Test
@@ -10133,6 +10168,13 @@ public class ObjectEntryLocalServiceTest {
 			WorkflowConstants.STATUS_EXPIRED, objectEntryAA.getStatus());
 		Assert.assertTrue(
 			DateUtil.equals(expirationDate, objectEntryAA.getExpirationDate()));
+
+		TreeTestUtil.deleteObjectDefinitionHierarchy(
+			_objectDefinitionLocalService,
+			new String[] {
+				objectDefinitionA.getName(), objectDefinitionAA.getName()
+			},
+			_objectEntryLocalService, _objectRelationshipLocalService);
 	}
 
 	@Test

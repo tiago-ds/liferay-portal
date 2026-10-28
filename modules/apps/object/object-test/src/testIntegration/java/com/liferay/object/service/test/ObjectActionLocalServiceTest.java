@@ -1769,6 +1769,68 @@ public class ObjectActionLocalServiceTest {
 	}
 
 	@Test
+	public void testAddObjectActionWithUnmodifiableLabelMap() throws Exception {
+		Locale defaultLocale = _objectDefinition.getDefaultLocale();
+
+		Assert.assertNotEquals(LocaleUtil.BRAZIL, defaultLocale);
+
+		Map<Locale, String> labelMap = Collections.singletonMap(
+			LocaleUtil.BRAZIL, "pt_BR objectActionLabel");
+
+		ObjectAction objectAction1 = _addObjectAction(
+			StringPool.BLANK, labelMap, RandomTestUtil.randomString(),
+			ObjectActionExecutorConstants.KEY_GROOVY,
+			ObjectActionTriggerConstants.KEY_ON_AFTER_DELETE,
+			new UnicodeProperties(), false);
+
+		Assert.assertEquals(
+			HashMapBuilder.put(
+				defaultLocale, "pt_BR objectActionLabel"
+			).put(
+				LocaleUtil.BRAZIL, "pt_BR objectActionLabel"
+			).build(),
+			objectAction1.getLabelMap());
+
+		Assert.assertEquals(
+			Collections.singletonMap(
+				LocaleUtil.BRAZIL, "pt_BR objectActionLabel"),
+			labelMap);
+
+		labelMap = HashMapBuilder.put(
+			LocaleUtil.BRAZIL, "pt_BR objectActionLabel"
+		).put(
+			LocaleUtil.SPAIN, "es_ES objectActionLabel"
+		).build();
+
+		ObjectAction objectAction2 = _addObjectAction(
+			StringPool.BLANK, labelMap, RandomTestUtil.randomString(),
+			ObjectActionExecutorConstants.KEY_GROOVY,
+			ObjectActionTriggerConstants.KEY_ON_AFTER_DELETE,
+			new UnicodeProperties(), false);
+
+		Assert.assertEquals(
+			HashMapBuilder.put(
+				defaultLocale, objectAction2.getName()
+			).put(
+				LocaleUtil.BRAZIL, "pt_BR objectActionLabel"
+			).put(
+				LocaleUtil.SPAIN, "es_ES objectActionLabel"
+			).build(),
+			objectAction2.getLabelMap());
+
+		Assert.assertEquals(
+			HashMapBuilder.put(
+				LocaleUtil.BRAZIL, "pt_BR objectActionLabel"
+			).put(
+				LocaleUtil.SPAIN, "es_ES objectActionLabel"
+			).build(),
+			labelMap);
+
+		_objectActionLocalService.deleteObjectAction(objectAction1);
+		_objectActionLocalService.deleteObjectAction(objectAction2);
+	}
+
+	@Test
 	public void testAddObjectActionWithUsePreferredLanguageForGuestsParameter()
 		throws Exception {
 
@@ -2453,17 +2515,21 @@ public class ObjectActionLocalServiceTest {
 			).labelMap(
 				LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString())
 			).name(
-				"name"
+				StringUtil.randomId()
 			).objectDefinitionId(
 				objectDefinition.getObjectDefinitionId()
 			).userId(
 				TestPropsValues.getUserId()
 			).build());
 
+		String objectFieldValue = RandomTestUtil.randomString();
+
 		_objectActionLocalService.addObjectAction(
 			RandomTestUtil.randomString(), TestPropsValues.getUserId(),
 			objectDefinition.getObjectDefinitionId(), true,
-			"oldValue(\"name\") == \"Paul\"",
+			StringBundler.concat(
+				"oldValue(\"", objectField.getName(), "\") == \"",
+				objectFieldValue, "\""),
 			LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
 			LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
 			LocalizedMapUtil.getLocalizedMap(RandomTestUtil.randomString()),
@@ -2491,7 +2557,7 @@ public class ObjectActionLocalServiceTest {
 			HashMapBuilder.putAll(
 				values
 			).put(
-				"name", "Paul"
+				objectField.getName(), objectFieldValue
 			).build());
 
 		Assert.assertNull(_argumentsList.poll());
@@ -2501,7 +2567,7 @@ public class ObjectActionLocalServiceTest {
 			HashMapBuilder.putAll(
 				values
 			).put(
-				"name", RandomTestUtil.randomString()
+				objectField.getName(), RandomTestUtil.randomString()
 			).build());
 
 		Assert.assertNotNull(_argumentsList.poll());

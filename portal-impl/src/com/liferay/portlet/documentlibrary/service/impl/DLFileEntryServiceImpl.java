@@ -94,10 +94,7 @@ public class DLFileEntryServiceImpl extends DLFileEntryServiceBaseImpl {
 	public DLFileVersion cancelCheckOut(long fileEntryId)
 		throws PortalException {
 
-		boolean locked = LockManagerUtil.isLocked(
-			DLFileEntry.class.getName(), fileEntryId);
-
-		if (locked && !hasFileEntryLock(fileEntryId) &&
+		if (!_isCheckOutOwner(fileEntryId) &&
 			!_hasOverrideCheckoutPermission(fileEntryId)) {
 
 			throw new PrincipalException.MustHavePermission(
@@ -114,10 +111,7 @@ public class DLFileEntryServiceImpl extends DLFileEntryServiceBaseImpl {
 			String changeLog, ServiceContext serviceContext)
 		throws PortalException {
 
-		boolean locked = LockManagerUtil.isLocked(
-			DLFileEntry.class.getName(), fileEntryId);
-
-		if (locked && !hasFileEntryLock(fileEntryId)) {
+		if (!_isCheckOutOwner(fileEntryId)) {
 			throw new FileEntryLockException.MustOwnLock();
 		}
 
@@ -131,10 +125,7 @@ public class DLFileEntryServiceImpl extends DLFileEntryServiceBaseImpl {
 			long fileEntryId, String lockUuid, ServiceContext serviceContext)
 		throws PortalException {
 
-		boolean locked = LockManagerUtil.isLocked(
-			DLFileEntryConstants.getClassName(), fileEntryId);
-
-		if (locked && !hasFileEntryLock(fileEntryId)) {
+		if (!_isCheckOutOwner(fileEntryId)) {
 			throw new FileEntryLockException.MustOwnLock();
 		}
 
@@ -165,6 +156,13 @@ public class DLFileEntryServiceImpl extends DLFileEntryServiceBaseImpl {
 		fileEntryModelResourcePermission.check(
 			getPermissionChecker(), fileEntryId, ActionKeys.UPDATE);
 
+		if (!LockManagerUtil.isLocked(
+				DLFileEntry.class.getName(), fileEntryId) &&
+			!_isCheckOutOwner(fileEntryId)) {
+
+			throw new FileEntryLockException.MustOwnLock();
+		}
+
 		return dlFileEntryLocalService.checkOutFileEntry(
 			getUserId(), fileEntryId, owner, expirationTime, serviceContext);
 	}
@@ -181,6 +179,9 @@ public class DLFileEntryServiceImpl extends DLFileEntryServiceBaseImpl {
 
 		fileEntryModelResourcePermission.check(
 			getPermissionChecker(), sourceFileEntryId, ActionKeys.VIEW);
+
+		fileEntryModelResourcePermission.check(
+			getPermissionChecker(), sourceFileEntryId, ActionKeys.DOWNLOAD);
 
 		ModelResourcePermissionUtil.check(
 			ModelResourcePermissionRegistryUtil.
@@ -966,6 +967,9 @@ public class DLFileEntryServiceImpl extends DLFileEntryServiceBaseImpl {
 				throw new FileEntryLockException.MustOwnLock();
 			}
 		}
+		else if (!_isCheckOutOwner(fileEntryId)) {
+			throw new FileEntryLockException.MustOwnLock();
+		}
 
 		return dlFileEntryLocalService.updateFileEntry(
 			getUserId(), fileEntryId, sourceFileName, mimeType, title, urlTitle,
@@ -1035,6 +1039,27 @@ public class DLFileEntryServiceImpl extends DLFileEntryServiceBaseImpl {
 
 		return fileEntryModelResourcePermission.contains(
 			getPermissionChecker(), fileEntryId, ActionKeys.OVERRIDE_CHECKOUT);
+	}
+
+	private boolean _isCheckOutOwner(long fileEntryId) throws PortalException {
+		if (LockManagerUtil.isLocked(
+				DLFileEntry.class.getName(), fileEntryId)) {
+
+			return hasFileEntryLock(fileEntryId);
+		}
+
+		if (!dlFileEntryLocalService.isFileEntryCheckedOut(fileEntryId)) {
+			return true;
+		}
+
+		DLFileVersion dlFileVersion =
+			_dlFileVersionLocalService.getLatestFileVersion(fileEntryId, false);
+
+		if (dlFileVersion.getUserId() != getUserId()) {
+			return false;
+		}
+
+		return true;
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(

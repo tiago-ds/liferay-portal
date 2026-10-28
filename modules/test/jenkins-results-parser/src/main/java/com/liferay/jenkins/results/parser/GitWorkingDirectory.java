@@ -708,10 +708,6 @@ public class GitWorkingDirectory {
 		fetch(gitRemote.getRemoteURL(), noTags);
 	}
 
-	public LocalGitBranch fetch(LocalGitBranch localGitBranch) {
-		return fetch(null, localGitBranch);
-	}
-
 	public LocalGitBranch fetch(
 		LocalGitBranch localGitBranch, boolean noTags,
 		RemoteGitRef remoteGitRef) {
@@ -1063,7 +1059,21 @@ public class GitWorkingDirectory {
 		}
 	}
 
-	public LocalGitBranch fetch(
+	public void fetchGitCommitParentFromUpstream(String sha) {
+		GitRemote upstreamGitRemote = getUpstreamGitRemote();
+
+		if (upstreamGitRemote == null) {
+			return;
+		}
+
+		executeBashCommands(
+			3, GitUtil.MILLIS_RETRY_DELAY, 1000 * 60 * 15,
+			JenkinsResultsParserUtil.combine(
+				"git fetch -f --depth=2 ", upstreamGitRemote.getRemoteURL(),
+				" ", sha));
+	}
+
+	public void fetchLocalGitBranch(
 		String branchName, LocalGitBranch localGitBranch) {
 
 		if (localGitBranch == null) {
@@ -1074,7 +1084,7 @@ public class GitWorkingDirectory {
 		StringBuilder sb = new StringBuilder();
 
 		sb.append("git fetch -f --no-tags ");
-		sb.append(String.valueOf(localGitBranch.getDirectory()));
+		sb.append(localGitBranch.getDirectory());
 		sb.append(" ");
 		sb.append(localGitBranch.getName());
 
@@ -1101,23 +1111,6 @@ public class GitWorkingDirectory {
 			JenkinsResultsParserUtil.getCurrentTimeMillis() - start);
 
 		System.out.println("Fetch completed in " + durationString);
-
-		return createLocalGitBranch(
-			localGitBranch.getName(), true, localGitBranch.getSHA());
-	}
-
-	public void fetchGitCommitParentFromUpstream(String sha) {
-		GitRemote upstreamGitRemote = getUpstreamGitRemote();
-
-		if (upstreamGitRemote == null) {
-			return;
-		}
-
-		executeBashCommands(
-			3, GitUtil.MILLIS_RETRY_DELAY, 1000 * 60 * 15,
-			JenkinsResultsParserUtil.combine(
-				"git fetch -f --depth=2 ", upstreamGitRemote.getRemoteURL(),
-				" ", sha));
 	}
 
 	public Set<File> findFiles(String fileName, String fileContentSnippet) {

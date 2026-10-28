@@ -5,17 +5,16 @@
 
 import {expect, mergeTests} from '@playwright/test';
 
-import {apiHelpersTest} from '../../../fixtures/apiHelpersTest';
+import {dataApiHelpersTest} from '../../../fixtures/dataApiHelpersTest';
 import {featureFlagsTest} from '../../../fixtures/featureFlagsTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {checkAccessibility} from '../../../utils/checkAccessibility';
 import {clickAndExpectToBeVisible} from '../../../utils/clickAndExpectToBeVisible';
-import getRandomString from '../../../utils/getRandomString';
 import {hoverAndExpectToBeVisible} from '../../../utils/hoverAndExpectToBeVisible';
 import {designLibrariesPageTest} from './fixtures/designLibrariesPageTest';
 
 const test = mergeTests(
-	apiHelpersTest,
+	dataApiHelpersTest,
 	designLibrariesPageTest,
 	featureFlagsTest({
 		'LPD-57283': {enabled: true},
@@ -27,124 +26,101 @@ test(
 	'Shows the revamped per-library home with members and connected sites',
 	{tag: ['@LPD-108834', '@LPD-99371']},
 	async ({apiHelpers, designLibrariesPage, page}) => {
-		const designLibraryName = getRandomString();
 
-		const createdDesignLibrary =
-			await test.step('Create a new design library via headless', async () => {
-				return await apiHelpers.headlessAssetLibrary.createAssetLibrary(
-					{
-						name: designLibraryName,
-						settings: {},
-						type: 'DesignLibrary',
-					}
-				);
-			});
+		// Create a design library
 
-		try {
-			await test.step('Navigate into the design library', async () => {
-				await designLibrariesPage.goToDesignLibrary(designLibraryName);
-			});
+		const designLibrary =
+			await apiHelpers.headlessAssetLibrary.createDesignLibrary();
 
-			await test.step('Design Assets section exposes the Add Asset action', async () => {
-				await expect(
-					page.getByRole('heading', {name: 'Design Assets'})
-				).toBeVisible();
+		// Go to the design library
 
-				await expect(
-					page.getByRole('button', {name: 'Add Asset'})
-				).toBeVisible();
-			});
+		await designLibrariesPage.goToDesignLibrary(designLibrary.name);
 
-			await test.step('Add Asset groups the creation actions of each asset type', async () => {
-				const fragmentsMenuItem = page.getByRole('menuitem', {
-					exact: true,
-					name: 'Fragments',
-				});
+		// Check the Design Assets section
 
-				await clickAndExpectToBeVisible({
-					target: fragmentsMenuItem,
-					trigger: page.getByRole('button', {name: 'Add Asset'}),
-				});
+		await expect(
+			page.getByRole('heading', {name: 'Design Assets'})
+		).toBeVisible();
 
-				const newContentPageTemplateMenuItem = page.getByRole(
-					'menuitem',
-					{name: 'New Content Page Template'}
-				);
+		await expect(
+			page.getByRole('button', {name: 'Add Asset'})
+		).toBeVisible();
 
-				await hoverAndExpectToBeVisible({
-					target: newContentPageTemplateMenuItem,
-					trigger: page.getByRole('menuitem', {
-						exact: true,
-						name: 'Page Templates',
-					}),
-				});
-				await hoverAndExpectToBeVisible({
-					target: page.getByRole('menuitem', {
-						name: 'New Basic Fragment',
-					}),
-					trigger: fragmentsMenuItem,
-				});
+		// Check the Add Asset menu
 
-				await expect(newContentPageTemplateMenuItem).toBeHidden();
+		const fragmentsMenuItem = page.getByRole('menuitem', {
+			exact: true,
+			name: 'Fragments',
+		});
 
-				await expect(async () => {
-					await page.keyboard.press('Escape');
+		await clickAndExpectToBeVisible({
+			target: fragmentsMenuItem,
+			trigger: page.getByRole('button', {name: 'Add Asset'}),
+		});
 
-					await expect(fragmentsMenuItem).toBeHidden({
-						timeout: 500,
-					});
-				}).toPass();
-			});
+		const newContentPageTemplateMenuItem = page.getByRole('menuitem', {
+			name: 'New Content Page Template',
+		});
 
-			await test.step('Members section shows the owner and the Users and User Groups tabs', async () => {
-				await expect(
-					page.getByRole('heading', {name: /^Members/})
-				).toBeVisible();
+		await hoverAndExpectToBeVisible({
+			target: newContentPageTemplateMenuItem,
+			trigger: page.getByRole('menuitem', {
+				exact: true,
+				name: 'Page Templates',
+			}),
+		});
+		await hoverAndExpectToBeVisible({
+			target: page.getByRole('menuitem', {name: 'New Basic Fragment'}),
+			trigger: fragmentsMenuItem,
+		});
 
-				await expect(
-					page.getByRole('tab', {name: 'Users'})
-				).toBeVisible();
+		await expect(newContentPageTemplateMenuItem).toBeHidden();
 
-				await expect(
-					page.getByRole('tab', {name: 'User Groups'})
-				).toBeVisible();
+		await expect(async () => {
+			await page.keyboard.press('Escape');
 
-				await expect(page.getByText('(Owner)')).toBeVisible();
-			});
+			await expect(fragmentsMenuItem).toBeHidden({timeout: 500});
+		}).toPass();
 
-			await test.step('An owner can manage members', async () => {
-				await expect(
-					page.getByRole('button', {name: 'Manage Members'})
-				).toBeVisible();
-			});
+		// Check the Members section
 
-			await test.step('Connected Sites section is empty and hides Manage Sites when there are none', async () => {
-				await expect(
-					page.getByRole('heading', {name: /^Connected Sites/})
-				).toBeVisible();
+		await expect(
+			page.getByRole('heading', {name: /^Members/})
+		).toBeVisible();
 
-				await expect(
-					page.getByText('No Sites Are Connected Yet')
-				).toBeVisible();
+		await expect(page.getByRole('tab', {name: 'Users'})).toBeVisible();
 
-				await expect(
-					page.getByRole('button', {name: 'Manage Sites'})
-				).toBeHidden();
-			});
+		await expect(
+			page.getByRole('tab', {name: 'User Groups'})
+		).toBeVisible();
 
-			await test.step('Check the accessibility for the design library home', async () => {
-				await checkAccessibility({
-					page,
-					selectors: ['.portlet-body'],
-				});
-			});
-		}
-		finally {
-			await test.step('Remove created design library', async () => {
-				await apiHelpers.headlessAssetLibrary.deleteAssetLibrary(
-					createdDesignLibrary.externalReferenceCode
-				);
-			});
-		}
+		await expect(page.getByText('(Owner)')).toBeVisible();
+
+		// Check the Manage Members button
+
+		await expect(
+			page.getByRole('button', {name: 'Manage Members'})
+		).toBeVisible();
+
+		// Check the Connected Sites section
+
+		await expect(
+			page.getByRole('heading', {name: /^Connected Sites/})
+		).toBeVisible();
+
+		await expect(
+			page.getByText('No Sites Are Connected Yet')
+		).toBeVisible();
+
+		await expect(
+			page.getByRole('button', {name: 'Manage Sites'})
+		).toBeHidden();
+
+		// Check the accessibility
+
+		await checkAccessibility({
+			page,
+			selectors: ['.portlet-body'],
+		});
 	}
 );

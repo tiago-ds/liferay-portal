@@ -34,15 +34,15 @@ public class OSBAccountEntry {
 			for (ExternalLink externalLink : externalLinks) {
 				if (!StringUtil.equals(
 						externalLink.getDomain(),
-						KoroneikiConstants.DOMAIN_DOSSIERA) ||
+						KoroneikiConstants.DOMAIN_SALESFORCE) ||
 					!StringUtil.equals(
-						externalLink.getEntityId(),
+						externalLink.getEntityName(),
 						KoroneikiConstants.ENTITY_NAME_ACCOUNT)) {
 
 					continue;
 				}
 
-				_dossieraAccountKey = externalLink.getEntityId();
+				_salesforceAccountId = externalLink.getEntityId();
 			}
 		}
 
@@ -83,10 +83,6 @@ public class OSBAccountEntry {
 		}
 
 		return new Date(_createDate.getTime());
-	}
-
-	public String getDossieraAccountKey() {
-		return _dossieraAccountKey;
 	}
 
 	public long getHighestSupportResponseId() {
@@ -147,6 +143,10 @@ public class OSBAccountEntry {
 
 	public long getRedirectAccountEntryId() {
 		return _redirectAccountEntryId;
+	}
+
+	public String getSalesforceAccountId() {
+		return _salesforceAccountId;
 	}
 
 	public int getStatus() {
@@ -223,10 +223,6 @@ public class OSBAccountEntry {
 		}
 	}
 
-	public void setDossieraAccountKey(String dossieraAccountKey) {
-		_dossieraAccountKey = dossieraAccountKey;
-	}
-
 	public void setHighestSupportResponseId(long highestSupportResponseId) {
 		_highestSupportResponseId = highestSupportResponseId;
 	}
@@ -287,6 +283,10 @@ public class OSBAccountEntry {
 		_redirectAccountEntryId = redirectAccountEntryId;
 	}
 
+	public void setSalesforceAccountId(String salesforceAccountId) {
+		_salesforceAccountId = salesforceAccountId;
+	}
+
 	public void setStatus(int status) {
 		_status = status;
 	}
@@ -332,7 +332,6 @@ public class OSBAccountEntry {
 	private String _corpProjectUuid;
 	private long _countryId;
 	private Date _createDate;
-	private String _dossieraAccountKey;
 	private long _highestSupportResponseId;
 	private long _industry;
 	private String _instructions;
@@ -347,6 +346,7 @@ public class OSBAccountEntry {
 	private long _partnerEntryId;
 	private boolean _partnerManagedSupport;
 	private long _redirectAccountEntryId;
+	private String _salesforceAccountId;
 	private int _status;
 	private long _statusByUserId;
 	private String _statusByUserName;
